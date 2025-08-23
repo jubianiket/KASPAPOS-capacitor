@@ -7,9 +7,8 @@ import type { OrderItem, MenuItem, Order } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Utensils, Bike } from 'lucide-react';
+import TableSelection from '@/components/table-selection';
 
 export default function Home() {
   const [order, setOrder] = useState<OrderItem[]>([]);
@@ -75,12 +74,15 @@ export default function Home() {
         <div className="lg:col-span-2">
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-3">Order Details</h2>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 mb-6">
               <ToggleGroup 
                 type="single" 
                 value={orderType} 
                 onValueChange={(value: 'Dine In' | 'Delivery') => {
-                  if(value) setOrderType(value)
+                  if(value) {
+                    setOrderType(value);
+                    setTableNumber(''); // Reset table number when changing order type
+                  }
                 }}
                 className="bg-background rounded-lg p-1 border"
               >
@@ -91,18 +93,12 @@ export default function Home() {
                   <Bike /> Delivery
                 </ToggleGroupItem>
               </ToggleGroup>
-              {orderType === 'Dine In' && (
-                <div className="w-48">
-                  <Label htmlFor="table-number" className="mb-2 block text-sm font-medium">Table Number</Label>
-                  <Input 
-                    id="table-number"
-                    placeholder="e.g., 12" 
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                  />
-                </div>
-              )}
             </div>
+            {orderType === 'Dine In' && (
+              <div className="mb-6">
+                <TableSelection selectedTable={tableNumber} onSelectTable={setTableNumber} />
+              </div>
+            )}
           </div>
           <MenuGrid onAddToOrder={addToOrder} />
         </div>
