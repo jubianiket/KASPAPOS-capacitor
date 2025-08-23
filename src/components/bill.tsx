@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import Image from 'next/image';
 import { MinusCircle, PlusCircle, Sparkles, Trash2, X, Bike, Utensils } from 'lucide-react';
 import type { OrderItem, MenuItem, Order } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -92,14 +91,6 @@ export default function Bill({
               <div className="space-y-4">
                 {orderItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
-                      width={48}
-                      height={48}
-                      className="rounded-md object-cover"
-                      data-ai-hint={`${item.category.toLowerCase()} ${item.name.split(' ')[1]?.toLowerCase() || ''}`}
-                    />
                     <div className="flex-grow">
                       <p className="font-medium">{item.name}</p>
                       <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from 'next/image';
 import { Plus } from 'lucide-react';
 import type { MenuItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,18 +13,6 @@ interface MenuItemCardProps {
 export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      <CardHeader className="p-0">
-        <div className="aspect-video overflow-hidden">
-          <Image
-            src={item.imageUrl}
-            alt={item.name}
-            width={300}
-            height={200}
-            className="object-cover w-full h-full"
-            data-ai-hint={`${item.category.toLowerCase()} ${item.name.split(' ')[1]?.toLowerCase() || ''}`}
-          />
-        </div>
-      </CardHeader>
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
         <p className="text-sm text-muted-foreground">{item.description}</p>
