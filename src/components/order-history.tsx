@@ -9,7 +9,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Ticket, Calendar, Clock } from 'lucide-react';
+import { Ticket, Calendar, Clock, Utensils, Bike } from 'lucide-react';
+import { Separator } from './ui/separator';
 
 export default function OrderHistory() {
   const [orders] = useLocalStorage<Order[]>('orders', []);
@@ -40,6 +41,16 @@ export default function OrderHistory() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium text-muted-foreground">{new Date(order.timestamp).toLocaleTimeString()}</span>
+                </div>
+                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {order.orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                    <span>{order.orderType}</span>
+                    {order.orderType === 'Dine In' && order.tableNumber && (
+                        <>
+                        <Separator orientation="vertical" className="h-4"/>
+                        <span>Table: <span className="font-semibold text-foreground">{order.tableNumber}</span></span>
+                        </>
+                    )}
                 </div>
               </div>
               <div className="flex items-center gap-4">

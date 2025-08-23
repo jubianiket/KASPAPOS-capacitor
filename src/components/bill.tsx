@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { MinusCircle, PlusCircle, Sparkles, Trash2, X } from 'lucide-react';
+import { MinusCircle, PlusCircle, Sparkles, Trash2, X, Bike, Utensils } from 'lucide-react';
 import type { OrderItem, MenuItem, Order } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import UpsellSuggestionsDrawer from './upsell-suggestions-drawer';
+import { Badge } from './ui/badge';
 
 const TAX_RATE = 0.1; // 10%
 
@@ -18,8 +19,10 @@ interface BillProps {
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearOrder: () => void;
-  onCompleteOrder: (completedOrder: Omit<Order, 'id' | 'timestamp'>) => void;
+  onCompleteOrder: (completedOrder: Omit<Order, 'id' | 'timestamp' | 'orderType' | 'tableNumber'>) => void;
   onAddToOrder: (item: MenuItem) => void;
+  orderType: 'Dine In' | 'Delivery';
+  tableNumber?: string;
 }
 
 export default function Bill({
@@ -29,6 +32,8 @@ export default function Bill({
   onClearOrder,
   onCompleteOrder,
   onAddToOrder,
+  orderType,
+  tableNumber,
 }: BillProps) {
   const [discount, setDiscount] = useState(0); // For future implementation
 
@@ -54,14 +59,26 @@ export default function Bill({
 
   return (
     <Card className="sticky top-24">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Current Order</CardTitle>
-        {orderItems.length > 0 && (
-          <Button variant="ghost" size="icon" onClick={onClearOrder} className="text-muted-foreground hover:text-destructive">
-            <X className="h-5 w-5" />
-            <span className="sr-only">Clear Order</span>
-          </Button>
-        )}
+      <CardHeader>
+        <div className="flex items-center justify-between">
+            <CardTitle>Current Order</CardTitle>
+            {orderItems.length > 0 && (
+            <Button variant="ghost" size="icon" onClick={onClearOrder} className="text-muted-foreground hover:text-destructive">
+                <X className="h-5 w-5" />
+                <span className="sr-only">Clear Order</span>
+            </Button>
+            )}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+            <span>{orderType}</span>
+            {orderType === 'Dine In' && tableNumber && (
+                <>
+                <Separator orientation="vertical" className="h-4"/>
+                <span>Table: <span className="font-semibold text-foreground">{tableNumber}</span></span>
+                </>
+            )}
+        </div>
       </CardHeader>
       <CardContent>
         {orderItems.length === 0 ? (
@@ -136,7 +153,7 @@ export default function Bill({
             </Button>
            </UpsellSuggestionsDrawer>
           <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder}>
-            <Button className="w-full text-lg py-6">
+            <Button className="w-full text-lg py-6" disabled={orderType === 'Dine In' && !tableNumber}>
               Proceed to Payment
             </Button>
           </PaymentDialog>

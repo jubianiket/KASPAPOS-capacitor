@@ -20,4 +20,6 @@ export interface Order {
   total: number;
   paymentMethod: 'Cash' | 'Card' | 'Mobile';
   timestamp: string;
+  orderType: 'Dine In' | 'Delivery';
+  tableNumber?: string;
 }
