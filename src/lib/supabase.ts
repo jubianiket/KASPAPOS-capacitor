@@ -64,17 +64,22 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
+    const payload: { [key: string]: any } = {
+        items: order.items,
+        sub_total: order.subtotal,
+        total: order.total,
+        gst: order.tax,
+        order_type: order.order_type,
+        status: order.status
+    };
+
+    if (order.table_number) {
+        payload.table_number = order.table_number;
+    }
+
     const { data, error } = await supabase
         .from('orders')
-        .insert([{ 
-            items: order.items,
-            sub_total: order.subtotal, 
-            total: order.total, 
-            gst: order.tax,
-            order_type: order.order_type,
-            table_number: order.table_number,
-            status: order.status
-        }])
+        .insert([payload])
         .select()
         .single();
     
@@ -127,3 +132,4 @@ export const deleteOrder = async (orderId: number): Promise<boolean> => {
     }
     return true;
 }
+
