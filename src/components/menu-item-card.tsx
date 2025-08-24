@@ -33,7 +33,7 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
       onUpdateItem({ ...item, rate: newRate });
       toast({
         title: 'Price Updated',
-        description: `${item.name} price has been updated to $${newRate.toFixed(2)}`,
+        description: `${item.name} price has been updated to Rs.${newRate.toFixed(2)}`,
       })
     }
     setIsEditing(false);
@@ -67,7 +67,7 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
             </div>
         ) : (
             <div className="flex items-center gap-2">
-                <p className="text-lg font-bold text-primary">${Number(item.rate).toFixed(2)}</p>
+                <p className="text-lg font-bold text-primary">Rs.{Number(item.rate).toFixed(2)}</p>
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={handleEditClick}>
                     <Edit className="h-4 w-4" />
                 </Button>

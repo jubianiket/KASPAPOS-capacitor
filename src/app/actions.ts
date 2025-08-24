@@ -9,7 +9,7 @@ export async function getUpsellSuggestions(
   try {
     const menuItems = await getMenuItems();
     const allMenuItems = menuItems.map(
-      (item) => `${item.name} - $${item.rate.toFixed(2)}`
+      (item) => `${item.name} - Rs.${item.rate.toFixed(2)}`
     );
 
     const orderItemsAsStrings = currentOrderItems.map(

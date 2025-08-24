@@ -132,7 +132,7 @@ export default function Bill({
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
                         <PlusCircle className="w-4 h-4" />
                       </Button>
-                        <p className="text-sm text-muted-foreground w-12 text-right">${(item.rate * item.quantity).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground w-12 text-right">Rs.{(item.rate * item.quantity).toFixed(2)}</p>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -145,22 +145,22 @@ export default function Bill({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>Rs.{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>Rs.{tax.toFixed(2)}</span>
               </div>
               {(order?.discount ?? 0) > 0 && (
                 <div className="flex justify-between text-destructive">
                   <span>Discount</span>
-                  <span>-${(order?.discount ?? 0).toFixed(2)}</span>
+                  <span>-Rs.{(order?.discount ?? 0).toFixed(2)}</span>
                 </div>
               )}
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>Rs.{total.toFixed(2)}</span>
               </div>
             </div>
           </>

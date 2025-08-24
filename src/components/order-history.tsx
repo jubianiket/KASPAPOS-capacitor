@@ -78,7 +78,7 @@ export default function OrderHistory() {
               </div>
               <div className="flex items-center gap-4">
                  <Badge variant={order.payment_method === 'Card' ? 'default' : 'secondary'} className="capitalize">{order.payment_method}</Badge>
-                 <span className="font-bold text-lg text-primary">${order.total.toFixed(2)}</span>
+                 <span className="font-bold text-lg text-primary">Rs.{order.total.toFixed(2)}</span>
               </div>
             </div>
           </AccordionTrigger>
@@ -91,7 +91,7 @@ export default function OrderHistory() {
                     <span>
                       {item.name} <span className="text-muted-foreground">x {item.quantity}</span>
                     </span>
-                    <span>${(item.rate * item.quantity).toFixed(2)}</span>
+                    <span>Rs.{(item.rate * item.quantity).toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
@@ -99,21 +99,21 @@ export default function OrderHistory() {
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>Rs.{order.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tax</span>
-                  <span>${order.tax.toFixed(2)}</span>
+                  <span>Rs.{order.tax.toFixed(2)}</span>
                 </div>
                 {order.discount > 0 && (
                    <div className="flex justify-between text-destructive">
                      <span className="text-muted-foreground">Discount</span>
-                     <span>-${order.discount.toFixed(2)}</span>
+                     <span>-Rs.{order.discount.toFixed(2)}</span>
                    </div>
                 )}
                  <div className="flex justify-between font-bold">
                   <span>Total</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>Rs.{order.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>

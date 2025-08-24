@@ -60,7 +60,7 @@ export default function PaymentDialog({
         <div className="py-4 space-y-6">
           <div className="text-center">
             <p className="text-sm text-muted-foreground">Total Amount Due</p>
-            <p className="text-4xl font-bold text-primary">${total.toFixed(2)}</p>
+            <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
           </div>
           <div className="flex justify-center">
             <ToggleGroup 

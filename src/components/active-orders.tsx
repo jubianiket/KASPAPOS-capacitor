@@ -56,7 +56,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
                         <span>{order.items.length} items</span>
                     </div>
                     <div className="font-semibold">
-                       ${order.total.toFixed(2)}
+                       Rs.{order.total.toFixed(2)}
                     </div>
                 </div>
                  {order.status && <Badge variant="secondary" className="capitalize mt-2">{order.status}</Badge>}
