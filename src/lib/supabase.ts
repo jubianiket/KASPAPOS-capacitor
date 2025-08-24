@@ -59,15 +59,13 @@ const toSupabase = (order: Partial<Order>) => {
     }
 
     // This is the critical fix. Ensure status is always valid for the DB.
-    // If status is 'pending' or not set, it should be 'received' for the DB insert.
-    if (order.status && order.status !== 'pending') {
-        payload.status = order.status;
+    // The only valid statuses for the 'orders' table are 'received' and 'completed'.
+    if (order.status === 'completed') {
+        payload.status = 'completed';
     } else {
-        // This handles new orders (which are 'pending' on client) 
-        // and ensures they are saved as 'received'.
+        // Any other state (including client-side 'pending') should be 'received' in the database.
         payload.status = 'received';
     }
-
 
     return payload;
 }
