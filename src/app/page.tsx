@@ -195,7 +195,6 @@ export default function Home() {
           items: [itemToAdd],
           subtotal: 0, 
           tax: 0, 
-          discount: 0, 
           total: 0,
           payment_status: 'unpaid',
           order_type: currentOrderType,
@@ -258,27 +257,30 @@ export default function Home() {
 
   const completeOrderAndPay = async (completedOrder: Order) => {
     const updatedOrder = await saveOrder({
-        ...completedOrder,
-        payment_status: 'paid',
-        status: 'completed', // Ensure status is completed on payment
+      ...completedOrder,
+      payment_status: 'paid',
+      status: 'completed',
     });
-    
-    if (updatedOrder) {
-        // Remove from active orders and reset the view
-        setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
-        setActiveOrder(null);
-        if(completedOrder.order_type === 'dine-in') {
-            setTableNumber(null);
-        }
 
-        toast({
-          title: 'Payment Successful',
-          description: 'The order has been completed and saved to history.',
-        });
-        return updatedOrder;
+    if (updatedOrder) {
+      setActiveOrders((prev) => prev.filter((o) => o.id !== completedOrder.id));
+      setActiveOrder(null);
+      if (completedOrder.order_type === 'dine-in') {
+        setTableNumber(null);
+      }
+
+      toast({
+        title: 'Payment Successful',
+        description: 'The order has been completed and saved to history.',
+      });
+      return updatedOrder;
     } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete payment.' });
-        return null;
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to complete payment.',
+      });
+      return null;
     }
   };
   

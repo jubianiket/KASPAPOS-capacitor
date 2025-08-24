@@ -30,17 +30,10 @@ const fromSupabase = (order: any): Order => {
     }
 }
 
-const toSupabase = (order: Order, isUpdate: boolean = false) => {
+const toSupabase = (order: Order) => {
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax;
-    
-    let dbStatus: 'received' | 'completed';
-    if (order.status === 'completed' || order.payment_status === 'paid') {
-        dbStatus = 'completed';
-    } else {
-        dbStatus = 'received';
-    }
 
     const payload: { [key: string]: any } = {
         date: order.created_at || new Date().toISOString(),
@@ -52,14 +45,9 @@ const toSupabase = (order: Order, isUpdate: boolean = false) => {
         table_number: order.table_number,
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
-        status: dbStatus,
+        status: order.status,
     };
     
-    if (isUpdate) {
-        // Don't include the primary key in the update payload
-        delete payload.id;
-    }
-
     return payload;
 }
 
@@ -124,12 +112,10 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 
     const isNewOrder = order.id <= 0;
+    const payload = toSupabase(order);
 
     if (isNewOrder) {
-        // Omitting the ID for new orders so Supabase can generate it.
-        const { id, ...orderData } = order;
-        const insertPayload = toSupabase({ ...orderData, id: 0 } as Order);
-        
+        const { id, ...insertPayload } = payload;
         console.log("Attempting to insert order:", insertPayload);
 
         const { data, error } = await supabase
@@ -145,7 +131,6 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         return fromSupabase(data);
     } else {
         // Update existing order
-        const payload = toSupabase(order, true); // Pass true for update
         console.log(`Attempting to update order ${order.id}:`, payload);
 
         const { data, error } = await supabase
