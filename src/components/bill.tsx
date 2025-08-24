@@ -100,7 +100,7 @@ export default function Bill({
 
   const isPaymentDisabled = () => {
     if (!order) return true;
-    if (order.status !== 'completed') return true;
+    if (order.status !== 'received') return true;
     return order.items.length === 0;
   }
   
@@ -121,14 +121,7 @@ export default function Bill({
                 </Button>
             );
         case 'received':
-            return (
-                 <Button className="w-full text-lg py-6" onClick={onMarkAsCompleted} variant="secondary">
-                    <CheckCheck className="mr-2 h-5 w-5" />
-                    Mark as Completed
-                </Button>
-            );
-        case 'completed':
-            return (
+             return (
                  <PaymentDialog 
                     order={order} 
                     total={total} 

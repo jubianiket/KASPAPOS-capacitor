@@ -89,7 +89,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['received', 'completed']) 
+        .in('status', ['received']) 
         .neq('payment_status', 'paid') 
         .order('date', { ascending: false });
 
