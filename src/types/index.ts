@@ -41,8 +41,7 @@ export interface KitchenOrder {
 export interface User {
     id: number;
     username: string;
-    // Password should not be stored on the client, but is needed for signup
-    password?: string;
+    password?: string; // This can be optional on the client for security, but required for signup.
     role: string;
     name: string;
     phone: number;
