@@ -104,7 +104,7 @@ export default function Home() {
     
     manageOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableNumber, orderType]);
+  }, [tableNumber, orderType, activeOrders]);
   
   const handleSelectOrder = (orderId: number) => {
     const selected = activeOrders.find(o => o.id === orderId);
