@@ -15,7 +15,7 @@ const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
         id: order.id,
-        created_at: order.date, // This was the bug, it was missing.
+        created_at: order.date,
         items: order.items,
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
@@ -32,8 +32,7 @@ const fromSupabase = (order: any): Order => {
 const toSupabase = (order: Partial<Order>) => {
     const payload: {[key: string]: any} = {};
 
-    // Only include the ID if it's a real, positive number.
-    // Supabase upsert will fail if id is null on a new record.
+    // Only include the ID if it's a real, positive number for upsert.
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
@@ -47,6 +46,7 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
     
+    // Only include table_number if it's provided
     if (order.table_number) {
         payload.table_number = order.table_number;
     }
@@ -58,10 +58,13 @@ const toSupabase = (order: Partial<Order>) => {
         payload.payment_status = order.payment_status;
     }
 
-    // Ensure status is always valid. New orders are 'received'.
+    // This is the critical fix. Ensure status is always valid for the DB.
+    // If status is 'pending' or not set, it should be 'received' for the DB insert.
     if (order.status && order.status !== 'pending') {
         payload.status = order.status;
-    } else if (!payload.id) { // It's a new order if there's no ID
+    } else {
+        // This handles new orders (which are 'pending' on client) 
+        // and ensures they are saved as 'received'.
         payload.status = 'received';
     }
 
@@ -125,7 +128,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 
 export const saveOrder = async (order: Order): Promise<Order | null> => {
     const payload = toSupabase(order);
-
+    
     const { data, error } = await supabase
         .from('orders')
         .upsert(payload)
