@@ -87,6 +87,11 @@ export default function Home() {
     } else {
       setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
     }
+    
+    // Do not save pending orders to DB
+    if(order.status === 'pending') {
+      return order;
+    }
 
     const savedOrder = await saveOrder(order);
 
@@ -109,6 +114,20 @@ export default function Home() {
       }
     }
     return savedOrder;
+  }
+  
+  const confirmOrder = async () => {
+    if (activeOrder && activeOrder.status === 'pending') {
+        const confirmedOrder = {
+            ...activeOrder,
+            status: 'received' as const,
+        }
+        await updateAndSaveOrder(confirmedOrder);
+        toast({
+            title: 'Order Confirmed',
+            description: 'The order has been sent to the kitchen.'
+        });
+    }
   }
 
 
@@ -150,7 +169,7 @@ export default function Home() {
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
           table_number: currentOrderType === 'dine-in' ? tableNumber : null,
-          status: 'received',
+          status: 'pending', // Start as pending
           created_at: new Date().toISOString(),
       };
     }
@@ -177,6 +196,13 @@ export default function Home() {
 
   const clearOrder = async () => {
     if(!activeOrder) return;
+
+    // If order is pending and not saved, just clear it from local state
+    if (activeOrder.status === 'pending') {
+        setActiveOrder(null);
+        setActiveOrders(prev => prev.filter(o => o.id !== activeOrder.id));
+        return;
+    }
 
     if(activeOrder.items.length === 0) {
       if (!activeOrder.id || activeOrder.id < 0) {
@@ -318,6 +344,7 @@ export default function Home() {
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
             onCompleteOrder={completeOrder}
+            onConfirmOrder={confirmOrder}
             onAddToOrder={addToOrder}
           />
         </div>

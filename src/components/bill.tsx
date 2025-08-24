@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils, Send } from 'lucide-react';
 import type { OrderItem, MenuItem, Order } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ interface BillProps {
   onRemoveItem: (itemId: number) => void;
   onClearOrder: () => void;
   onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
+  onConfirmOrder: () => void;
   onAddToOrder: (item: MenuItem) => void;
 }
 
@@ -28,6 +29,7 @@ export default function Bill({
   onRemoveItem,
   onClearOrder,
   onCompleteOrder,
+  onConfirmOrder
 }: BillProps) {
   
   const orderItems = order?.items ?? [];
@@ -63,7 +65,13 @@ export default function Bill({
 
   const isPaymentDisabled = () => {
     if (!order) return true;
+    if (order.status === 'pending') return true; // Can't pay for an unconfirmed order
     return order.items.length === 0;
+  }
+  
+  const isConfirmDisabled = () => {
+      if (!order) return true;
+      return order.items.length === 0;
   }
 
   return (
@@ -88,7 +96,7 @@ export default function Bill({
                     <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                     </>
                 )}
-                 {order.status && <Badge variant="secondary" className="capitalize">{order.status}</Badge>}
+                 {order.status && <Badge variant={order.status === 'pending' ? 'outline' : 'secondary'} className="capitalize">{order.status}</Badge>}
             </div>
         )}
       </CardHeader>
@@ -151,16 +159,23 @@ export default function Bill({
       </CardContent>
       {orderItems.length > 0 && (
         <CardFooter className="flex flex-col gap-2">
-          <PaymentDialog 
-            order={order} 
-            total={total} 
-            onCompleteOrder={handleCompleteOrder} 
-            disabled={isPaymentDisabled()}
-          >
-             <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
-              Proceed to Payment
-            </Button>
-          </PaymentDialog>
+            {order?.status === 'pending' ? (
+                 <Button className="w-full text-lg py-6" onClick={onConfirmOrder} disabled={isConfirmDisabled()}>
+                    <Send className="mr-2 h-5 w-5" />
+                    Confirm Order
+                </Button>
+            ) : (
+                <PaymentDialog 
+                    order={order} 
+                    total={total} 
+                    onCompleteOrder={handleCompleteOrder} 
+                    disabled={isPaymentDisabled()}
+                >
+                    <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
+                    Proceed to Payment
+                    </Button>
+                </PaymentDialog>
+            )}
         </CardFooter>
       )}
     </Card>

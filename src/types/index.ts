@@ -14,7 +14,7 @@ export interface OrderItem extends MenuItem {
 }
 
 export interface Order {
-  id?: number; // ID is optional for new orders not yet saved
+  id: number; // Temporarily negative for client-side orders
   created_at: string;
   items: OrderItem[];
   subtotal: number;
@@ -25,5 +25,5 @@ export interface Order {
   payment_status?: 'paid' | 'unpaid';
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
-  status: 'received' | 'preparing' | 'ready' | 'completed';
+  status: 'pending' | 'received' | 'preparing' | 'ready' | 'completed';
 }
