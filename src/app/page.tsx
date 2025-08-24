@@ -33,7 +33,7 @@ export default function Home() {
   const fetchOrders = useCallback(async () => {
       setIsLoading(true);
       const orders = await getActiveOrders();
-      setActiveOrders(orders.filter(o => o.payment_status !== 'paid'));
+      setActiveOrders(orders); // Fetches all non-paid orders
       setIsLoading(false);
   }, []);
 
@@ -84,8 +84,6 @@ export default function Home() {
     // Optimistic UI update
     setActiveOrder(order);
     if (isNew) {
-      // For new orders, ensure they are added to activeOrders list immediately
-      // so they can be selected and modified before confirming.
       if (!activeOrders.find(o => o.id === order.id)) {
         setActiveOrders(prev => [...prev, order]);
       }
@@ -104,8 +102,8 @@ export default function Home() {
       // Update state with the actual data from the database
       setActiveOrder(savedOrder);
       setActiveOrders(prev => {
-        const newOrders = prev.filter(o => o.id !== order.id);
-        return [...newOrders, savedOrder];
+        const newOrders = prev.filter(o => o.id !== order.id); // remove old version (temp or existing)
+        return [...newOrders, savedOrder]; // add new version from DB
       });
     } else {
       // Revert on failure
@@ -144,7 +142,6 @@ export default function Home() {
                     title: 'Kitchen Order Failed',
                     description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
                 });
-                // Potentially add logic here to revert the main order status if needed
             }
         }
     }

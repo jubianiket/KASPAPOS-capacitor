@@ -17,7 +17,7 @@ const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
         id: order.id,
-        created_at: order.date, // Correctly map 'date' from DB to 'created_at'
+        created_at: order.date, // Map 'date' from DB to 'created_at'
         items: order.items,
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
@@ -32,6 +32,7 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
+    // Recalculate totals every time to ensure data integrity
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
@@ -42,6 +43,7 @@ const toSupabase = (order: Order) => {
     const dbStatus = order.status === 'completed' ? 'completed' : 'received';
 
     const payload: { [key: string]: any } = {
+        // id is handled below
         items: order.items,
         sub_total: subtotal,
         gst: tax,
@@ -55,6 +57,8 @@ const toSupabase = (order: Order) => {
         status: dbStatus, // Use the explicitly determined valid status
     };
 
+    // IMPORTANT: Only include the ID if it's a real, existing order.
+    // Negative IDs are temporary client-side IDs and should not be sent for an insert.
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
@@ -92,6 +96,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
         .from('orders')
         .select('*')
         .in('status', ['received', 'completed']) // Fetch both received and completed for the main view
+        .neq('payment_status', 'paid') // Filter out fully paid and completed orders from active view
         .order('date', { ascending: false });
 
     if (error) {
@@ -105,7 +110,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('status', 'completed')
+        .eq('payment_status', 'paid') // History should only show fully paid orders
         .order('date', { ascending: false });
     
     if (error) {
