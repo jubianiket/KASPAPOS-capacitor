@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Order, MenuItem } from '@/types';
+import type { Order, MenuItem, KitchenOrder } from '@/types';
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -146,4 +146,32 @@ export const deleteOrder = async (orderId: number): Promise<boolean> => {
         return false;
     }
     return true;
+}
+
+export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | null> => {
+    if (!order.id || order.id < 0) {
+        console.error("Cannot create kitchen order without a valid main order ID.");
+        return null;
+    }
+    
+    const payload: Omit<KitchenOrder, 'id' | 'created_at'> = {
+        order_id: order.id,
+        items: order.items,
+        order_type: order.order_type,
+        table_number: order.table_number,
+        status: 'preparing'
+    }
+
+    const { data, error } = await supabase
+        .from('kitchen_orders')
+        .insert(payload)
+        .select()
+        .single();
+
+    if(error) {
+        console.error("Error creating kitchen order:", error);
+        return null;
+    }
+    
+    return data as KitchenOrder;
 }

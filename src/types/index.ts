@@ -27,3 +27,13 @@ export interface Order {
   table_number?: number | null;
   status: 'pending' | 'received' | 'preparing' | 'ready' | 'completed';
 }
+
+export interface KitchenOrder {
+  id: number;
+  order_id: number;
+  created_at: string;
+  items: OrderItem[];
+  order_type: 'dine-in' | 'delivery' | 'takeaway';
+  table_number?: number | null;
+  status: 'preparing' | 'ready';
+}

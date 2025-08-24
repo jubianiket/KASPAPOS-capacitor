@@ -11,7 +11,7 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder } from '@/lib/supabase';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -118,15 +118,30 @@ export default function Home() {
   
   const confirmOrder = async () => {
     if (activeOrder && activeOrder.status === 'pending') {
-        const confirmedOrder = {
+        const confirmedOrderData = {
             ...activeOrder,
             status: 'received' as const,
         }
-        await updateAndSaveOrder(confirmedOrder);
-        toast({
-            title: 'Order Confirmed',
-            description: 'The order has been sent to the kitchen.'
-        });
+        const savedMainOrder = await updateAndSaveOrder(confirmedOrderData);
+        
+        if (savedMainOrder) {
+            // After successfully saving the main order, create the kitchen order
+            const kitchenOrder = await createKitchenOrder(savedMainOrder);
+            if (kitchenOrder) {
+                toast({
+                    title: 'Order Confirmed',
+                    description: 'The order has been sent to the kitchen.'
+                });
+            } else {
+                // Handle failure to create kitchen order
+                toast({
+                    variant: 'destructive',
+                    title: 'Kitchen Order Failed',
+                    description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
+                });
+                // Potentially add logic here to revert the main order status if needed
+            }
+        }
     }
   }
 
