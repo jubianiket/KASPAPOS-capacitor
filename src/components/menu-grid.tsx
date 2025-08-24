@@ -18,6 +18,24 @@ interface MenuGridProps {
 
 const ITEMS_PER_PAGE = 8;
 
+const PaginationControls = ({ currentPage, totalPages, onPrev, onNext }: { currentPage: number, totalPages: number, onPrev: () => void, onNext: () => void }) => {
+    return (
+        <div className="flex justify-center items-center gap-4">
+            <Button onClick={onPrev} disabled={currentPage === 1} variant="outline">
+                <ChevronLeft className="h-4 w-4 mr-2"/>
+                Previous
+            </Button>
+            <span className="text-sm font-medium">
+                Page {currentPage} of {totalPages}
+            </span>
+            <Button onClick={onNext} disabled={currentPage === totalPages} variant="outline">
+                Next
+                <ChevronRight className="h-4 w-4 ml-2"/>
+            </Button>
+        </div>
+    )
+}
+
 export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCategory }: MenuGridProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +117,16 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
             </div>
         ) : (
           <>
+            {totalPages > 1 && (
+                <div className="mb-6">
+                    <PaginationControls 
+                        currentPage={currentPage} 
+                        totalPages={totalPages} 
+                        onPrev={handlePrevPage} 
+                        onNext={handleNextPage} 
+                    />
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {paginatedItems.map((item) => (
                     <MenuItemCard 
@@ -110,18 +138,13 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
                 ))}
             </div>
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-6">
-                  <Button onClick={handlePrevPage} disabled={currentPage === 1} variant="outline">
-                      <ChevronLeft className="h-4 w-4 mr-2"/>
-                      Previous
-                  </Button>
-                  <span className="text-sm font-medium">
-                      Page {currentPage} of {totalPages}
-                  </span>
-                  <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-2"/>
-                  </Button>
+              <div className="mt-6">
+                  <PaginationControls 
+                        currentPage={currentPage} 
+                        totalPages={totalPages} 
+                        onPrev={handlePrevPage} 
+                        onNext={handleNextPage} 
+                    />
               </div>
             )}
            </>
