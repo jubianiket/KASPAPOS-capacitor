@@ -19,7 +19,7 @@ interface BillProps {
   onRemoveItem: (itemId: number) => void;
   onClearOrder: () => void;
   onConfirmOrder: (order: Order) => void;
-  onCompleteOrder: (order: Order) => void;
+  onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
   onAddToOrder: (item: MenuItem) => void;
 }
 
@@ -56,7 +56,7 @@ export default function Bill({
     }
   }
 
-  const handleCompleteOrder = (paymentMethod: NonNullable<Order['payment_method']>) => {
+  const handleCompleteOrder = async (paymentMethod: NonNullable<Order['payment_method']>) => {
     if (order) {
       const orderToComplete: Order = {
         ...order,
@@ -65,7 +65,7 @@ export default function Bill({
         total,
         payment_method: paymentMethod,
       };
-      onCompleteOrder(orderToComplete);
+      return await onCompleteOrder(orderToComplete);
     }
   };
 
@@ -172,7 +172,12 @@ export default function Bill({
                 Confirm Order
               </Button>
             )}
-          <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder} disabled={isPaymentDisabled()}>
+          <PaymentDialog 
+            order={order} 
+            total={total} 
+            onCompleteOrder={handleCompleteOrder} 
+            disabled={isPaymentDisabled()}
+          >
              <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
               Proceed to Payment
             </Button>

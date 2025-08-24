@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { DollarSign, CreditCard, Smartphone } from 'lucide-react';
+import { DollarSign, CreditCard, Smartphone, CheckCircle, Receipt } from 'lucide-react';
 import type { Order } from '@/types';
 import {
   Dialog,
@@ -12,16 +12,17 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { BillReceipt } from './bill-receipt';
 
 interface PaymentDialogProps {
   children: React.ReactNode;
   total: number;
-  onCompleteOrder: (paymentMethod: NonNullable<Order['payment_method']>) => void;
+  onCompleteOrder: (paymentMethod: NonNullable<Order['payment_method']>) => Promise<Order | null | undefined>;
   disabled?: boolean;
+  order: Order | null;
 }
 
 export default function PaymentDialog({
@@ -29,71 +30,112 @@ export default function PaymentDialog({
   total,
   onCompleteOrder,
   disabled = false,
+  order,
 }: PaymentDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<NonNullable<Order['payment_method']> | ''>('');
   const [isOpen, setIsOpen] = useState(false);
+  const [view, setView] = useState<'payment' | 'receipt'>('payment');
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (paymentMethod) {
-      onCompleteOrder(paymentMethod);
-      setIsOpen(false);
-      setPaymentMethod('');
+      setIsProcessing(true);
+      const result = await onCompleteOrder(paymentMethod);
+      setIsProcessing(false);
+      if (result) {
+        setCompletedOrder(result);
+        setView('receipt');
+      } else {
+        // Error toast is handled in page.tsx
+        setIsOpen(false);
+      }
     }
   };
 
   const handleOpenChange = (open: boolean) => {
-    if (disabled) return;
+    if (disabled || isProcessing) return;
     setIsOpen(open);
      if (!open) {
-      setPaymentMethod('');
+        // Reset state on close
+        setTimeout(() => {
+            setView('payment');
+            setPaymentMethod('');
+            setCompletedOrder(null);
+        }, 200);
     }
+  }
+
+  const handleNewOrder = () => {
+    setIsOpen(false);
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild disabled={disabled}>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Complete Payment</DialogTitle>
-          <DialogDescription>Select a payment method to finalize the order.</DialogDescription>
-        </DialogHeader>
-        <div className="py-4 space-y-6">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">Total Amount Due</p>
-            <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
-          </div>
-          <div className="flex justify-center">
-            <ToggleGroup 
-              type="single"
-              variant="outline"
-              value={paymentMethod}
-              onValueChange={(value: NonNullable<Order['payment_method']>) => {
-                if(value) setPaymentMethod(value)
-              }}
-            >
-              <ToggleGroupItem value="Cash" aria-label="Pay with cash">
-                <DollarSign className="h-5 w-5 mr-2" />
-                Cash
-              </ToggleGroupItem>
-              <ToggleGroupItem value="Card" aria-label="Pay with card">
-                <CreditCard className="h-5 w-5 mr-2" />
-                Card
-              </ToggleGroupItem>
-              <ToggleGroupItem value="Mobile" aria-label="Pay with mobile">
-                <Smartphone className="h-5 w-5 mr-2" />
-                Mobile
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button onClick={handlePayment} disabled={!paymentMethod}>
-            Confirm Payment
-          </Button>
-        </DialogFooter>
+        {view === 'payment' && (
+            <>
+                <DialogHeader>
+                    <DialogTitle>Complete Payment</DialogTitle>
+                    <DialogDescription>Select a payment method to finalize the order.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-6">
+                    <div className="text-center">
+                        <p className="text-sm text-muted-foreground">Total Amount Due</p>
+                        <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
+                    </div>
+                    <div className="flex justify-center">
+                        <ToggleGroup 
+                        type="single"
+                        variant="outline"
+                        value={paymentMethod}
+                        onValueChange={(value: NonNullable<Order['payment_method']>) => {
+                            if(value) setPaymentMethod(value)
+                        }}
+                        >
+                        <ToggleGroupItem value="Cash" aria-label="Pay with cash">
+                            <DollarSign className="h-5 w-5 mr-2" />
+                            Cash
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="Card" aria-label="Pay with card">
+                            <CreditCard className="h-5 w-5 mr-2" />
+                            Card
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="Mobile" aria-label="Pay with mobile">
+                            <Smartphone className="h-5 w-5 mr-2" />
+                            Mobile
+                        </ToggleGroupItem>
+                        </ToggleGroup>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handlePayment} disabled={!paymentMethod || isProcessing}>
+                        {isProcessing ? 'Processing...' : 'Confirm Payment'}
+                    </Button>
+                </DialogFooter>
+            </>
+        )}
+        {view === 'receipt' && completedOrder && (
+             <>
+                <DialogHeader>
+                     <DialogTitle className="flex items-center gap-2">
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                        <span>Payment Successful</span>
+                    </DialogTitle>
+                    <DialogDescription>The order has been completed. You can print the bill or start a new order.</DialogDescription>
+                </DialogHeader>
+                 <div className="py-4" id="receipt-section">
+                    <BillReceipt order={completedOrder} />
+                 </div>
+                <DialogFooter className="sm:justify-between gap-2">
+                    <Button onClick={handleNewOrder} variant="secondary">
+                        Start New Order
+                    </Button>
+                </DialogFooter>
+             </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -261,8 +261,10 @@ export default function Home() {
           title: 'Payment Successful',
           description: 'The order has been completed and saved.',
         });
+        return updatedOrder;
     } else {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete order.' });
+        return null;
     }
   };
   
