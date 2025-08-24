@@ -33,7 +33,7 @@ export default function Home() {
   const fetchOrders = useCallback(async () => {
       setIsLoading(true);
       const orders = await getActiveOrders();
-      setActiveOrders(orders);
+      setActiveOrders(orders.filter(o => o.payment_status !== 'paid'));
       setIsLoading(false);
   }, []);
 
@@ -43,7 +43,7 @@ export default function Home() {
   }, [fetchOrders]);
 
   const occupiedTables = activeOrders
-    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed' && o.id! > 0)
+    .filter(o => o.order_type === 'dine-in' && o.table_number && o.id! > 0)
     .map(o => o.table_number!);
 
   useEffect(() => {
@@ -51,13 +51,14 @@ export default function Home() {
     
     if (currentOrderType === 'dine-in') {
       if (tableNumber) {
-        const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
+        const existingOrder = activeOrders.find(o => o.table_number === tableNumber);
         setActiveOrder(existingOrder || null);
       } else {
         setActiveOrder(null);
       }
     } else { // Delivery
-        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
+        // Allow creating a new delivery order, or view the first non-completed one
+        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery');
         setActiveOrder(deliveryOrder || null);
     }
   }, [tableNumber, orderType, activeOrders]);
@@ -83,7 +84,11 @@ export default function Home() {
     // Optimistic UI update
     setActiveOrder(order);
     if (isNew) {
-      setActiveOrders(prev => [...prev, order]);
+      // For new orders, ensure they are added to activeOrders list immediately
+      // so they can be selected and modified before confirming.
+      if (!activeOrders.find(o => o.id === order.id)) {
+        setActiveOrders(prev => [...prev, order]);
+      }
     } else {
       setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
     }
@@ -233,11 +238,8 @@ export default function Home() {
         return;
     }
 
-    if(activeOrder.items.length === 0) {
-      if (!activeOrder.id || activeOrder.id < 0) {
-        setActiveOrder(null);
-        return;
-      }
+    // This handles clearing a confirmed order (e.g. customer cancels)
+    if(activeOrder.id > 0) {
       const success = await deleteOrder(activeOrder.id);
       if (success) {
           const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
@@ -246,12 +248,14 @@ export default function Home() {
           if(activeOrder.order_type === 'dine-in') {
             setTableNumber(null);
           }
+          toast({ title: 'Order Cleared', description: 'The order has been removed.' });
       } else {
           toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear order.' });
       }
       return;
     }
 
+    // Fallback for an empty but non-pending order
     await updateAndSaveOrder({ ...activeOrder, items: []});
   };
 
@@ -259,23 +263,24 @@ export default function Home() {
     const updatedOrder = await saveOrder({
         ...completedOrder,
         payment_status: 'paid',
+        status: 'completed', // Ensure status is completed on payment
     });
     
     if (updatedOrder) {
+        // Remove from active orders and reset the view
         setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
         setActiveOrder(null);
-        
         if(completedOrder.order_type === 'dine-in') {
             setTableNumber(null);
         }
 
         toast({
           title: 'Payment Successful',
-          description: 'The order has been completed and saved.',
+          description: 'The order has been completed and saved to history.',
         });
         return updatedOrder;
     } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete order.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete payment.' });
         return null;
     }
   };
@@ -318,7 +323,7 @@ export default function Home() {
             {isClient && !isLoading && activeOrders.length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
-                        orders={activeOrders.filter(o => o.id! > 0)} 
+                        orders={activeOrders} 
                         onSelectOrder={handleSelectOrder}
                         activeOrderId={activeOrder?.id}
                    />
@@ -338,7 +343,11 @@ export default function Home() {
                 ) : (
                   <TableSelection 
                     selectedTable={tableNumber} 
-                    onSelectTable={setTableNumber}
+                    onSelectTable={(t) => {
+                      setTableNumber(t);
+                      const existingOrder = activeOrders.find(o => o.table_number === t);
+                      setActiveOrder(existingOrder || null);
+                    }}
                     occupiedTables={occupiedTables}
                   />
                 )}

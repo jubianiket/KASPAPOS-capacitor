@@ -17,7 +17,7 @@ const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
         id: order.id,
-        created_at: order.date,
+        created_at: order.date, // Correctly map 'date' from DB to 'created_at'
         items: order.items,
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
@@ -91,7 +91,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('status', 'received')
+        .in('status', ['received', 'completed']) // Fetch both received and completed for the main view
         .order('date', { ascending: false });
 
     if (error) {
