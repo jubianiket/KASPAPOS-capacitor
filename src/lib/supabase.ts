@@ -17,7 +17,7 @@ const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
         id: order.id,
-        created_at: order.created_at, // Map 'created_at' from DB
+        created_at: order.date, // Map 'date' from DB to 'created_at' in app
         items: order.items,
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
@@ -36,6 +36,10 @@ const toSupabase = (order: Order) => {
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
+    
+    // Determine the status to save to the database.
+    // 'pending' is a client-side only status.
+    // If the order is not 'completed', it should be 'received' in the DB.
     const dbStatus = order.status === 'completed' ? 'completed' : 'received';
 
     const payload: { [key: string]: any } = {
@@ -46,16 +50,20 @@ const toSupabase = (order: Order) => {
         discount: order.discount ?? 0,
         order_type: order.order_type,
         table_number: order.table_number,
-        created_at: order.created_at || new Date().toISOString(),
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
         status: dbStatus,
     };
     
-    // IMPORTANT: Only include the ID if it's a real, existing order.
+    // Only include the ID if it's a real, existing order.
+    // Temporary negative IDs for new client-side orders should not be sent.
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
+    
+    // For new orders, the `date` is set by the DB default.
+    // For existing orders, we don't need to send the date back.
+    // So we never send `created_at` or `date` to Supabase.
 
     return payload;
 }
@@ -91,7 +99,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
         .select('*')
         .in('status', ['received', 'completed']) // Fetch both received and completed for the main view
         .neq('payment_status', 'paid') // Filter out fully paid and completed orders from active view
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false }); // Use 'date' column for sorting
 
     if (error) {
         console.error("Error fetching active orders:", error);
@@ -105,7 +113,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         .from('orders')
         .select('*')
         .eq('payment_status', 'paid') // History should only show fully paid orders
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false }); // Use 'date' column for sorting
     
     if (error) {
         console.error("Error fetching completed orders:", error);
@@ -172,3 +180,4 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     
     return data as KitchenOrder;
 }
+
