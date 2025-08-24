@@ -1,14 +1,15 @@
 'use server';
 
 import { upsellSuggestions } from '@/ai/flows/upsell-suggestions';
-import { menuItems } from '@/lib/menu-data';
+import { getMenuItems } from '@/lib/supabase';
 
 export async function getUpsellSuggestions(
   currentOrderItems: { name: string; quantity: number }[]
 ) {
   try {
+    const menuItems = await getMenuItems();
     const allMenuItems = menuItems.map(
-      (item) => `${item.name} - ${item.description} - $${item.price.toFixed(2)}`
+      (item) => `${item.name} - $${item.rate.toFixed(2)}`
     );
 
     const orderItemsAsStrings = currentOrderItems.map(

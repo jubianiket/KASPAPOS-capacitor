@@ -1,11 +1,11 @@
 export interface MenuItem {
-  id: string;
+  id: number;
   name: string;
-  description: string;
-  price: number;
+  rate: number;
   category: string;
-  image_url?: string;
-  created_at?: string;
+  available?: boolean;
+  portion?: string;
+  is_active?: boolean;
 }
 
 export interface OrderItem extends MenuItem {
@@ -23,5 +23,5 @@ export interface Order {
   payment_method?: 'Cash' | 'Card' | 'Mobile';
   order_type: 'Dine In' | 'Delivery';
   table_number?: string;
-  status: 'pending' | 'confirmed' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'received' | 'preparing' | 'ready';
 }

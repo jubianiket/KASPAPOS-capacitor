@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getUpsellSuggestions } from '@/app/actions';
 import { type OrderItem, type MenuItem } from '@/types';
-import { menuItems } from '@/lib/menu-data';
+import { getMenuItems } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
 import { Lightbulb, Plus } from 'lucide-react';
 
@@ -30,12 +30,16 @@ export default function UpsellSuggestionsDrawer({
 }: UpsellSuggestionsDrawerProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const { toast } = useToast();
 
   const fetchSuggestions = async () => {
     setIsLoading(true);
     setSuggestions([]);
     
+    const items = await getMenuItems();
+    setMenuItems(items);
+
     const currentOrder = orderItems.map(item => ({name: item.name, quantity: item.quantity}));
 
     const result = await getUpsellSuggestions(currentOrder);

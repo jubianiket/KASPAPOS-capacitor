@@ -11,26 +11,27 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-    const { data, error } = await supabase.from('menu_items').select('*');
+    const { data, error } = await supabase.from('menu_items').select('*').eq('is_active', true);
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
     }
-    return data as MenuItem[];
+    // Map 'rate' to 'price' to match what components might expect, or update components
+    return data.map(item => ({...item, price: item.rate})) as MenuItem[];
 }
 
 export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['pending', 'confirmed'])
-        .order('created_at', { ascending: false });
+        .in('status', ['pending', 'confirmed', 'received', 'preparing', 'ready'])
+        .order('date', { ascending: false });
 
     if (error) {
         console.error("Error fetching active orders:", error);
         return [];
     }
-    return data as Order[];
+    return (data as any[]).map(o => ({...o, created_at: o.date})) as Order[];
 };
 
 export const getCompletedOrders = async (): Promise<Order[]> => {
@@ -38,19 +39,25 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         .from('orders')
         .select('*')
         .eq('status', 'completed')
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
     
     if (error) {
         console.error("Error fetching completed orders:", error);
         return [];
     }
-    return data as Order[];
+    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
     const { data, error } = await supabase
         .from('orders')
-        .insert([order])
+        .insert([{ 
+            ...order, 
+            sub_total: order.subtotal, 
+            total: order.total, 
+            gst: order.tax,
+            order_type: order.order_type.toLowerCase().replace(' ', '-')
+        }])
         .select()
         .single();
     
@@ -58,14 +65,23 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Prom
         console.error("Error creating order:", error);
         return null;
     }
-    return data as Order;
+    return {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
 }
 
 
 export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<Order | null> => {
+    const updatePayload: {[key: string]: any} = {};
+    if (updates.status) updatePayload.status = updates.status;
+    if (updates.items) updatePayload.items = updates.items;
+    if (updates.subtotal) updatePayload.sub_total = updates.subtotal;
+    if (updates.tax) updatePayload.gst = updates.tax;
+    if (updates.total) updatePayload.total = updates.total;
+    if (updates.payment_method) updatePayload.payment_status = 'paid';
+
+
     const { data, error } = await supabase
         .from('orders')
-        .update(updates)
+        .update(updatePayload)
         .eq('id', orderId)
         .select()
         .single();
@@ -74,7 +90,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         console.error("Error updating order:", error);
         return null;
     }
-    return data as Order;
+    return {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
 }
 
 export const deleteOrder = async (orderId: string): Promise<boolean> => {

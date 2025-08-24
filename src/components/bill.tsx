@@ -12,12 +12,12 @@ import PaymentDialog from './payment-dialog';
 import UpsellSuggestionsDrawer from './upsell-suggestions-drawer';
 import { Badge } from './ui/badge';
 
-const TAX_RATE = 0.1; // 10%
+const TAX_RATE = 0.05; // 5%
 
 interface BillProps {
   order: Order | null;
-  onUpdateQuantity: (itemId: string, quantity: number) => void;
-  onRemoveItem: (itemId: string) => void;
+  onUpdateQuantity: (itemId: number, quantity: number) => void;
+  onRemoveItem: (itemId: number) => void;
   onClearOrder: () => void;
   onConfirmOrder: (order: Order) => void;
   onCompleteOrder: (order: Order) => void;
@@ -37,7 +37,7 @@ export default function Bill({
   const orderItems = order?.items ?? [];
 
   const calculations = useMemo(() => {
-    const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const subtotal = orderItems.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order?.discount ?? 0);
     return { subtotal, tax, total };
@@ -72,9 +72,15 @@ export default function Bill({
 
   const getOrderTitle = () => {
     if (!order) return 'No Order Selected';
-    if (order.order_type === 'Delivery') return 'Delivery Order';
+    if (order.order_type === 'Delivery' || order.order_type === 'delivery') return 'Delivery Order';
     if (order.table_number) return `Order for Table ${order.table_number}`;
     return 'Select a Table';
+  }
+
+  const isPaymentDisabled = () => {
+    if (!order) return true;
+    const readyForPaymentStatuses: Order['status'][] = ['confirmed', 'ready'];
+    return !readyForPaymentStatuses.includes(order.status);
   }
 
   return (
@@ -91,16 +97,15 @@ export default function Bill({
         </div>
         {order && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {order.order_type === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
-                <span>{order.order_type}</span>
-                {order.order_type === 'Dine In' && order.table_number && (
+                {(order.order_type === 'Dine In' || order.order_type === 'dine-in') ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                <span className="capitalize">{order.order_type}</span>
+                {(order.order_type === 'Dine In' || order.order_type === 'dine-in') && order.table_number && (
                     <>
                     <Separator orientation="vertical" className="h-4"/>
                     <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                     </>
                 )}
-                 {order.status === 'confirmed' && <Badge variant="secondary">Confirmed</Badge>}
-                 {order.status === 'pending' && <Badge variant="outline">Pending</Badge>}
+                 {order.status && <Badge variant="secondary" className="capitalize">{order.status}</Badge>}
             </div>
         )}
       </CardHeader>
@@ -127,7 +132,7 @@ export default function Bill({
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
                         <PlusCircle className="w-4 h-4" />
                       </Button>
-                        <p className="text-sm text-muted-foreground w-12 text-right">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground w-12 text-right">${(item.rate * item.quantity).toFixed(2)}</p>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -173,8 +178,8 @@ export default function Bill({
                 Confirm Order
               </Button>
             )}
-          <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder} disabled={order?.status !== 'confirmed'}>
-             <Button className="w-full text-lg py-6" disabled={order?.status !== 'confirmed'}>
+          <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder} disabled={isPaymentDisabled()}>
+             <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
               Proceed to Payment
             </Button>
           </PaymentDialog>

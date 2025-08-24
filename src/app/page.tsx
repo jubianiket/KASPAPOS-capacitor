@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, 'useState', 'useEffect' from 'react';
+import React, { useState, useEffect } from 'react';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order } from '@/types';
@@ -37,14 +37,14 @@ export default function Home() {
   };
 
   const occupiedTables = activeOrders
-    .filter(o => o.orderType === 'Dine In' && o.table_number && o.status === 'confirmed')
+    .filter(o => o.order_type === 'Dine In' && o.table_number && o.status !== 'completed' && o.status !== 'pending')
     .map(o => o.table_number!);
 
   useEffect(() => {
     const manageOrder = async () => {
       if (orderType === 'Dine In') {
           if (tableNumber) {
-              const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status === 'confirmed');
+              const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
               if (existingOrder) {
                   setActiveOrder(existingOrder);
               } else {
@@ -52,7 +52,7 @@ export default function Home() {
                   let pendingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status === 'pending');
                   if (!pendingOrder) {
                       // Start a new pending order for this table
-                      pendingOrder = await createOrder({
+                      const newOrder = await createOrder({
                           items: [],
                           subtotal: 0,
                           tax: 0,
@@ -62,8 +62,9 @@ export default function Home() {
                           table_number: tableNumber,
                           status: 'pending',
                       });
-                      if(pendingOrder) {
-                        setActiveOrders(prev => [...prev, pendingOrder!]);
+                      if(newOrder) {
+                        setActiveOrders(prev => [...prev, newOrder!]);
+                        pendingOrder = newOrder;
                       }
                   }
                   setActiveOrder(pendingOrder);
@@ -75,7 +76,7 @@ export default function Home() {
           // Find if there's a pending delivery order.
           let pendingDeliveryOrder = activeOrders.find(o => o.order_type === 'Delivery' && o.status === 'pending');
           if (!pendingDeliveryOrder) {
-              pendingDeliveryOrder = await createOrder({
+              const newOrder = await createOrder({
                   items: [],
                   subtotal: 0,
                   tax: 0,
@@ -84,8 +85,9 @@ export default function Home() {
                   order_type: 'Delivery',
                   status: 'pending',
               });
-              if (pendingDeliveryOrder) {
-                setActiveOrders(prev => [...prev, pendingDeliveryOrder!]);
+              if (newOrder) {
+                setActiveOrders(prev => [...prev, newOrder!]);
+                pendingDeliveryOrder = newOrder;
               }
           }
            setActiveOrder(pendingDeliveryOrder);
@@ -101,7 +103,7 @@ export default function Home() {
   const handleSelectOrder = (orderId: string) => {
     const selected = activeOrders.find(o => o.id === orderId);
     if(selected) {
-        if (selected.order_type === 'Dine In') {
+        if (selected.order_type === 'Dine In' || selected.order_type === 'dine-in') {
             setOrderType('Dine In');
             setTableNumber(selected.table_number || '');
         } else {
@@ -154,12 +156,12 @@ export default function Home() {
           : orderItem
       );
     } else {
-      newItems = [...activeOrder.items, { ...item, quantity: 1 }];
+      newItems = [...activeOrder.items, { ...item, quantity: 1, rate: item.rate }];
     }
     updateOrderItems(newItems);
   };
 
-  const updateQuantity = (itemId: string, quantity: number) => {
+  const updateQuantity = (itemId: number, quantity: number) => {
      if (!activeOrder) return;
     if (quantity <= 0) {
       removeFromOrder(itemId);
@@ -171,7 +173,7 @@ export default function Home() {
     }
   };
 
-  const removeFromOrder = (itemId: string) => {
+  const removeFromOrder = (itemId: number) => {
     if (!activeOrder) return;
     const newItems = activeOrder.items.filter((item) => item.id !== itemId);
     updateOrderItems(newItems);
@@ -180,7 +182,7 @@ export default function Home() {
   const clearOrder = async () => {
     if(!activeOrder) return;
     
-    if(activeOrder.status === 'confirmed') {
+    if(activeOrder.status === 'confirmed' || activeOrder.status === 'received' || activeOrder.status === 'preparing' || activeOrder.status === 'ready') {
         updateOrderItems([]);
         return;
     }
@@ -202,7 +204,7 @@ export default function Home() {
 
   const confirmOrder = async (confirmedOrder: Order) => {
     const updatedOrder = await updateOrder(confirmedOrder.id, { 
-        status: 'confirmed', 
+        status: 'received', 
         subtotal: confirmedOrder.subtotal,
         tax: confirmedOrder.tax,
         total: confirmedOrder.total,
@@ -214,7 +216,7 @@ export default function Home() {
         setActiveOrders(updatedActiveOrders);
         setActiveOrder(updatedOrder);
         
-        const toastTitle = updatedOrder.order_type === 'Dine In'
+        const toastTitle = (updatedOrder.order_type === 'Dine In' || updatedOrder.order_type === 'dine-in')
             ? `Order for Table ${updatedOrder.table_number} Confirmed`
             : 'Delivery Order Confirmed';
 
@@ -241,7 +243,7 @@ export default function Home() {
         setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
         
         // Reset the UI based on order type
-        if(completedOrder.order_type === 'Dine In') {
+        if(completedOrder.order_type === 'Dine In' || completedOrder.order_type === 'dine-in') {
             setActiveOrder(null);
             setTableNumber('');
         } else {
@@ -300,10 +302,10 @@ export default function Home() {
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-            {isClient && !isLoading && activeOrders.filter(o => o.status === 'confirmed').length > 0 && (
+            {isClient && !isLoading && activeOrders.filter(o => o.status !== 'pending' && o.status !== 'completed').length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
-                        orders={activeOrders.filter(o => o.status === 'confirmed')} 
+                        orders={activeOrders.filter(o => o.status !== 'pending' && o.status !== 'completed')} 
                         onSelectOrder={handleSelectOrder}
                         activeOrderId={activeOrder?.id}
                    />

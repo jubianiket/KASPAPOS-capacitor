@@ -17,7 +17,7 @@ export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) 
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+        <p className="text-lg font-bold text-primary">${item.rate.toFixed(2)}</p>
         <Button size="icon" variant="outline" onClick={() => onAddToOrder(item)} aria-label={`Add ${item.name} to order`}>
           <Plus className="h-5 w-5" />
         </Button>

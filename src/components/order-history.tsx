@@ -66,9 +66,9 @@ export default function OrderHistory() {
                   <span className="font-medium text-muted-foreground">{new Date(order.created_at).toLocaleTimeString()}</span>
                 </div>
                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {order.order_type === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
-                    <span>{order.order_type}</span>
-                    {order.order_type === 'Dine In' && order.table_number && (
+                    {(order.order_type === 'Dine In' || order.order_type === 'dine-in') ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                    <span className="capitalize">{order.order_type}</span>
+                    {(order.order_type === 'Dine In' || order.order_type === 'dine-in') && order.table_number && (
                         <>
                         <Separator orientation="vertical" className="h-4"/>
                         <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
@@ -91,7 +91,7 @@ export default function OrderHistory() {
                     <span>
                       {item.name} <span className="text-muted-foreground">x {item.quantity}</span>
                     </span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>${(item.rate * item.quantity).toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
