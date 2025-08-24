@@ -6,6 +6,9 @@ import Header from '@/components/header';
 export const metadata: Metadata = {
   title: 'KASPA POS',
   description: 'A modern Point of Sale for restaurants',
+  icons: {
+    icon: [],
+  },
 };
 
 export default function RootLayout({

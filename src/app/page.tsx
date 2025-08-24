@@ -187,11 +187,15 @@ export default function Home() {
       orderToUpdate = {...activeOrder, items: newItems };
 
     } else {
-      // Create a new order object
+      // Create a new, complete order object
       orderToUpdate = {
           id: tempId(), // Temporary client-side ID
           items: [itemToAdd],
-          subtotal: 0, tax: 0, discount: 0, total: 0,
+          subtotal: 0, 
+          tax: 0, 
+          discount: 0, 
+          total: 0,
+          payment_status: 'unpaid',
           order_type: currentOrderType,
           table_number: currentOrderType === 'dine-in' ? tableNumber : null,
           status: 'pending', // Start as pending

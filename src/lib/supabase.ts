@@ -139,7 +139,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
 
 
 export const deleteOrder = async (orderId: number): Promise<boolean> => {
-    const { error } = await supabase
+    const { error }_ = await supabase
         .from('orders')
         .delete()
         .eq('id', orderId);
