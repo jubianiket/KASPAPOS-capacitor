@@ -2,9 +2,11 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Ticket, UtensilsCrossed, LayoutDashboard } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Ticket, UtensilsCrossed, LayoutDashboard, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from './ui/button';
+import { useEffect, useState } from 'react';
 
 const KaspaLogo = () => (
   <svg
@@ -26,12 +28,32 @@ const KaspaLogo = () => (
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Check for user in localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, [pathname]); // Rerender on path change
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    router.push('/login');
+  };
 
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
   ];
+  
+  if (pathname === '/login' || pathname === '/signup') {
+      return null; // Don't render header on auth pages
+  }
 
   return (
     <header className="bg-card border-b sticky top-0 z-40">
@@ -41,19 +63,38 @@ export default function Header() {
           <span>KASPA POS</span>
         </Link>
         <nav className="flex items-center gap-4 md:gap-6">
-          {navLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
+          {user ? (
+            <>
+                {navLinks.map(({ href, label, icon: Icon }) => (
+                    <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                        "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                        pathname === href ? "text-primary" : "text-muted-foreground"
+                    )}
+                    >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden md:inline">{label}</span>
+                    </Link>
+                ))}
+                 <Button variant="ghost" size="icon" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                    <span className="sr-only">Logout</span>
+                </Button>
+            </>
+          ) : (
+             <Link
+              href="/login"
               className={cn(
                 "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                pathname === href ? "text-primary" : "text-muted-foreground"
+                pathname === "/login" ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden md:inline">{label}</span>
+              <LogIn className="h-4 w-4" />
+              <span className="hidden md:inline">Login</span>
             </Link>
-          ))}
+          )}
         </nav>
       </div>
     </header>

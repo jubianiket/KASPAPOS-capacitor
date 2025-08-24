@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Order, MenuItem, KitchenOrder, OrderItem } from '@/types';
+import type { Order, MenuItem, KitchenOrder, OrderItem, User } from '@/types';
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -105,7 +105,6 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
     return (data as any[]).map(fromSupabase);
 }
 
-
 export const saveOrder = async (order: Order): Promise<Order | null> => {
     if (order.status === 'pending') {
         return order;
@@ -113,11 +112,12 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
 
     const isNewOrder = order.id <= 0;
     const payload = toSupabase(order);
-
+    
     if (isNewOrder) {
+        // Remove temporary client-side ID before insertion
         const { id, ...insertPayload } = payload;
         console.log("Attempting to insert order:", insertPayload);
-
+        
         const { data, error } = await supabase
             .from('orders')
             .insert(insertPayload)
@@ -132,7 +132,6 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     } else {
         // Update existing order
         console.log(`Attempting to update order ${order.id}:`, payload);
-
         const { data, error } = await supabase
             .from('orders')
             .update(payload)
@@ -146,8 +145,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     }
-}
-
+};
 
 export const deleteOrder = async (orderId: number): Promise<boolean> => {
     const { error } = await supabase
@@ -188,4 +186,35 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     }
     
     return data as KitchenOrder;
+}
+
+// --- User Authentication ---
+
+export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User | null> => {
+    const { data, error } = await supabase
+        .from('users')
+        .insert({ ...userData, role: 'staff' }) // Default role
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error signing up:", error);
+        return null;
+    }
+    return data as User;
+}
+
+export const signIn = async (username: string, password: string): Promise<User | null> => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password) // IMPORTANT: Storing plain text passwords is not secure. This is for demonstration only.
+        .single();
+
+    if (error || !data) {
+        console.error("Error signing in:", error);
+        return null;
+    }
+    return data as User;
 }

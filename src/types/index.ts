@@ -1,4 +1,5 @@
 
+
 export interface MenuItem {
   id: number;
   name: string;
@@ -35,4 +36,15 @@ export interface KitchenOrder {
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
   status: 'preparing' | 'ready';
+}
+
+export interface User {
+    id: number;
+    username: string;
+    // Password should not be stored on the client, but is needed for signup
+    password?: string;
+    role: string;
+    name: string;
+    phone: number;
+    email: string;
 }

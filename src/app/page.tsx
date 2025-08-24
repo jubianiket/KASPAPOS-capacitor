@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
-import type { OrderItem, MenuItem, Order } from '@/types';
+import type { OrderItem, MenuItem, Order, User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike } from 'lucide-react';
@@ -21,7 +22,9 @@ export default function Home() {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [user, setUser] = useState<User | null>(null);
+
+  const router = useRouter();
   const { toast } = useToast();
   
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery'>('Dine In');
@@ -38,9 +41,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setIsClient(true);
-    fetchOrders();
-  }, [fetchOrders]);
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+        router.replace('/login');
+    } else {
+        setUser(JSON.parse(storedUser));
+        setIsClient(true);
+        fetchOrders();
+    }
+  }, [router, fetchOrders]);
 
   const occupiedTables = activeOrders
     .filter(o => o.order_type === 'dine-in' && o.table_number && o.id! > 0)
@@ -261,14 +270,14 @@ export default function Home() {
       payment_status: 'paid',
       status: 'completed',
     });
-
+  
     if (updatedOrder) {
       setActiveOrders((prev) => prev.filter((o) => o.id !== completedOrder.id));
       setActiveOrder(null);
       if (completedOrder.order_type === 'dine-in') {
         setTableNumber(null);
       }
-
+  
       toast({
         title: 'Payment Successful',
         description: 'The order has been completed and saved to history.',
@@ -297,6 +306,16 @@ export default function Home() {
       setSelectedCategory(value);
     }
   };
+  
+  if (!isClient || !user) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+             <div className="text-center">
+                <p>Loading...</p>
+             </div>
+        </div>
+    )
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
