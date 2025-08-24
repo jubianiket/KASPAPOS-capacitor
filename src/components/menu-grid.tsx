@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { MenuItem, GroupedMenuItem } from '@/types';
 import MenuItemCard from './menu-item-card';
-import { getMenuItems, updateMenuItem } from '@/lib/supabase';
+import { updateMenuItem } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from './ui/button';
@@ -12,8 +12,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PortionSelectionDialog from './portion-selection-dialog';
 
 interface MenuGridProps {
+  menuItems: MenuItem[];
+  isLoading: boolean;
   onAddToOrder: (item: MenuItem, portion: string) => void;
-  onCategoriesLoad: (categories: string[]) => void;
   selectedCategory: string;
 }
 
@@ -37,27 +38,10 @@ const PaginationControls = ({ currentPage, totalPages, onPrev, onNext }: { curre
     )
 }
 
-export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCategory }: MenuGridProps) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function MenuGrid({ menuItems, isLoading, onAddToOrder, selectedCategory }: MenuGridProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<GroupedMenuItem | null>(null);
   const { toast } = useToast();
-
-  const fetchMenuItems = useCallback(async () => {
-    setIsLoading(true);
-    const items = await getMenuItems();
-    setMenuItems(items);
-    
-    const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
-    onCategoriesLoad(uniqueCategories);
-
-    setIsLoading(false);
-  }, [onCategoriesLoad]);
-
-  useEffect(() => {
-    fetchMenuItems();
-  }, [fetchMenuItems]);
   
   const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
     const itemMap = new Map<string, GroupedMenuItem>();
@@ -83,22 +67,10 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
     setCurrentPage(1); // Reset to first page when category changes
   }, [selectedCategory]);
 
+  // This function is now unused as price updates happen on the menu management page.
+  // Kept here for potential future re-integration if needed.
   const handleUpdateItem = async (updatedItem: MenuItem) => {
-    const originalRate = menuItems.find(item => item.id === updatedItem.id)?.rate;
-
-    // Optimistic update
-    setMenuItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
-
-    const result = await updateMenuItem(updatedItem.id, { rate: updatedItem.rate });
-    if (!result) {
-      toast({
-        variant: 'destructive',
-        title: 'Error updating price',
-        description: 'Could not save the new price. Please try again.',
-      });
-      // Revert on failure
-      setMenuItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? { ...item, rate: originalRate! } : item));
-    }
+    // This logic should be moved to the menu management page for clarity
   };
 
   const handleSelectItemForPortion = (item: GroupedMenuItem) => {
@@ -183,7 +155,6 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
                       key={item.name} 
                       item={item} 
                       onAddToOrder={() => handleSelectItemForPortion(item)} 
-                      onUpdateItem={handleUpdateItem}
                     />
                 ))}
             </div>
@@ -212,5 +183,3 @@ const CardSkeleton = () => (
         </div>
     </div>
 )
-
-    

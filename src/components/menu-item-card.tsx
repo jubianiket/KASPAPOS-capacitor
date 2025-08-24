@@ -12,40 +12,29 @@ import { useToast } from '@/hooks/use-toast';
 interface MenuItemCardProps {
   item: GroupedMenuItem;
   onAddToOrder: (item: GroupedMenuItem) => void;
-  onUpdateItem: (item: MenuItem) => void;
+  // This prop is no longer needed here as updates are handled on the menu management page
+  onUpdateItem?: (item: MenuItem) => void;
 }
 
-export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuItemCardProps) {
+export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  // For simplicity, we edit the first portion's rate.
-  // A more complex implementation could allow editing all portion prices at once.
+  // Editing logic is being removed from this component for simplification.
+  // It should be handled exclusively in the menu management page.
   const [newRate, setNewRate] = useState(item.baseRate);
   const { toast } = useToast();
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Allow empty string for work-in-progress input, but treat as 0 for numeric conversion
-    if (value === '' || (!isNaN(Number(value)) && Number(value) >= 0)) {
-       setNewRate(Number(value));
-    }
+    // This logic will be removed or disabled
   };
 
   const handleSavePrice = () => {
-    // When saving, we update the price of the first portion in the group.
-    const itemToUpdate = item.portions[0];
-    if (newRate !== itemToUpdate.rate) {
-      onUpdateItem({ ...itemToUpdate, rate: newRate });
-      toast({
-        title: 'Price Updated',
-        description: `${item.name} base price has been updated to Rs.${newRate.toFixed(2)}`,
-      })
-    }
-    setIsEditing(false);
+    // This logic will be removed or disabled
   };
   
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
+    // In a real app, this might navigate to an edit page or open a more complex dialog
+    toast({ title: "Info", description: "Price editing is available on the Menu Management page."});
   }
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -62,32 +51,9 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        {isEditing ? (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <Input
-                    type="number"
-                    value={newRate}
-                    onChange={handlePriceChange}
-                    className="h-9 w-24"
-                    step="0.01"
-                    autoFocus
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSavePrice() }}
-                />
-                <Button size="icon" variant="ghost" onClick={handleSavePrice}>
-                    <Check className="h-5 w-5" />
-                </Button>
-            </div>
-        ) : (
-            <div className="flex items-center gap-2">
-                <p className="text-lg font-bold text-primary">Rs.{Number(item.baseRate).toFixed(2)}</p>
-                {/* Price editing is simplified to only edit the base rate. A more complex UI would be needed to edit all portion prices. */}
-                {item.portions.length === 1 && (
-                     <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={handleEditClick}>
-                        <Edit className="h-4 w-4" />
-                    </Button>
-                )}
-            </div>
-        )}
+        <div className="flex items-center gap-2">
+            <p className="text-lg font-bold text-primary">Rs.{Number(item.baseRate).toFixed(2)}</p>
+        </div>
         <Button size="icon" variant="outline" aria-label={`Add ${item.name} to order`}>
           <Plus className="h-5 w-5" />
         </Button>
@@ -95,5 +61,3 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
     </Card>
   );
 }
-
-    

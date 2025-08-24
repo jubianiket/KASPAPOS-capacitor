@@ -5,14 +5,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
-import type { OrderItem, MenuItem, Order, User, RestaurantSettings } from '@/types';
+import type { OrderItem, MenuItem, Order, User, RestaurantSettings, GroupedMenuItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings, getMenuItems } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 
@@ -27,6 +27,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+
 
   const router = useRouter();
   const { toast } = useToast();
@@ -39,12 +41,18 @@ export default function Home() {
 
   const fetchInitialData = useCallback(async () => {
       setIsLoading(true);
-      const [orders, fetchedSettings] = await Promise.all([
+      const [orders, fetchedSettings, items] = await Promise.all([
           getActiveOrders(),
-          getSettings()
+          getSettings(),
+          getMenuItems()
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
+      setMenuItems(items);
+
+      const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
+      setCategories(uniqueCategories);
+
       setIsLoading(false);
   }, []);
 
@@ -266,7 +274,7 @@ export default function Home() {
         toast({
             variant: "destructive",
             title: "No table selected",
-            description: "Please select a table before adding items to a Dine In order.",
+            description: "Please select a table before adding items for a Dine In order.",
         });
         return;
     }
@@ -344,6 +352,7 @@ export default function Home() {
         title: 'Payment Successful',
         description: 'The order has been completed and saved to history.',
       });
+       // The dialog will handle the next step, no need to refetch here
       return updatedOrder;
     } else {
       toast({
@@ -468,8 +477,9 @@ export default function Home() {
                 </ToggleGroup>
             </div>
             <MenuGrid 
+              menuItems={menuItems}
+              isLoading={isLoading}
               onAddToOrder={addToOrder}
-              onCategoriesLoad={setCategories}
               selectedCategory={selectedCategory}
             />
           </div>
