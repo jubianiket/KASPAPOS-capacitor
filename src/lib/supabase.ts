@@ -32,14 +32,13 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
-    // Recalculate totals every time to ensure data integrity
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
     
     // 'pending' is a client-side only status. It becomes 'received' when confirmed.
     // 'completed' is set when the order is finalized before payment.
-    const dbStatus = order.status === 'completed' ? 'completed' : 'received';
+    const dbStatus = order.status === 'completed' ? 'completed' : order.status === 'received' ? 'received' : 'received';
 
     const payload: { [key: string]: any } = {
         items: order.items,
@@ -54,15 +53,12 @@ const toSupabase = (order: Order) => {
         status: dbStatus,
     };
     
-    // Only include the ID if it's a real, existing order.
-    // Temporary negative IDs for new client-side orders should not be sent.
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
     
-    // Supabase sets the 'date' on creation, so we don't send it.
-    // However, if we need to update a record that has a date, we could include it here.
-    // For now, we let the DB handle it.
+    // The database's `date` column will be set by `default now()` on insert.
+    // We don't need to send a value for it.
     
     return payload;
 }
@@ -127,7 +123,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     
     const { data, error } = await supabase
         .from('orders')
-        .upsert(payload, { onConflict: 'id' }) // Explicitly define the conflict column
+        .upsert(payload, { onConflict: 'id' })
         .select()
         .single();
     
