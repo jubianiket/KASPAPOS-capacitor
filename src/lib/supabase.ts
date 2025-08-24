@@ -133,7 +133,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     
     const { data, error } = await supabase
         .from('orders')
-        .upsert([payload], { onConflict: 'id' }) // Use 'id' for conflict resolution and upsert requires an array
+        .upsert(payload, { onConflict: 'id' })
         .select()
         .single();
     
