@@ -29,33 +29,23 @@ const fromSupabase = (order: any): Order => {
     }
 }
 
-const toSupabase = (order: Partial<Order>) => {
-    const payload: {[key: string]: any} = {};
+const toSupabase = (order: Order) => {
+    const payload: { [key: string]: any } = {
+        items: order.items,
+        sub_total: order.subtotal,
+        gst: order.tax,
+        total: order.total,
+        discount: order.discount,
+        order_type: order.order_type,
+        table_number: order.table_number,
+        date: order.created_at,
+        payment_method: order.payment_method,
+        payment_status: order.payment_status,
+    };
 
     // Only include the ID if it's a real, positive number for upsert.
     if (order.id && order.id > 0) {
         payload.id = order.id;
-    }
-    
-    // Map all fields from the order object to the database payload if they exist
-    if (order.created_at) payload.date = order.created_at;
-    if (order.items) payload.items = order.items;
-    if (order.subtotal !== undefined) payload.sub_total = order.subtotal;
-    if (order.tax !== undefined) payload.gst = order.tax;
-    if (order.total !== undefined) payload.total = order.total;
-    if (order.discount !== undefined) payload.discount = order.discount;
-    if (order.order_type) payload.order_type = order.order_type;
-    
-    // Only include table_number if it's provided
-    if (order.table_number) {
-        payload.table_number = order.table_number;
-    }
-
-    if (order.payment_method) {
-      payload.payment_status = 'paid';
-      payload.payment_method = order.payment_method;
-    } else if(order.payment_status) {
-        payload.payment_status = order.payment_status;
     }
 
     // This is the critical fix. Ensure status is always valid for the DB.
@@ -69,6 +59,7 @@ const toSupabase = (order: Partial<Order>) => {
 
     return payload;
 }
+
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase.from('menu_items').select('*');
