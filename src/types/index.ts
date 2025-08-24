@@ -14,7 +14,7 @@ export interface OrderItem extends MenuItem {
 }
 
 export interface Order {
-  id: number;
+  id?: number; // ID is optional for new orders not yet saved
   created_at: string;
   items: OrderItem[];
   subtotal: number;

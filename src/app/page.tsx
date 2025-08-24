@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -12,7 +11,10 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, updateOrder, createOrder, deleteOrder } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder } from '@/lib/supabase';
+
+// Helper to generate temporary client-side IDs
+const tempId = () => -Math.floor(Math.random() * 1000000);
 
 export default function Home() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -41,22 +43,22 @@ export default function Home() {
   }, [fetchOrders]);
 
   const occupiedTables = activeOrders
-    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed')
+    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed' && o.id! > 0)
     .map(o => o.table_number!);
 
   useEffect(() => {
     const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     
-    if (currentOrderType === 'dine-in' && tableNumber) {
+    if (currentOrderType === 'dine-in') {
+      if (tableNumber) {
         const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
         setActiveOrder(existingOrder || null);
-    } else if (currentOrderType === 'delivery') {
-        // For delivery, find the first active delivery order that isn't completed.
-        // This simple logic might need refinement for multiple parallel delivery orders.
+      } else {
+        setActiveOrder(null);
+      }
+    } else { // Delivery
         const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
         setActiveOrder(deliveryOrder || null);
-    } else {
-      setActiveOrder(null);
     }
   }, [tableNumber, orderType, activeOrders]);
   
@@ -73,23 +75,40 @@ export default function Home() {
         setActiveOrder(selected);
     }
   }
+  
+  const updateAndSaveOrder = async (order: Order) => {
+    const isNew = !order.id || order.id < 0;
+    const oldOrderState = activeOrder ? { ...activeOrder } : null;
 
-  const updateOrderItems = async (orderId: number, newItems: OrderItem[]) => {
-      const orderToUpdate = activeOrders.find(o => o.id === orderId);
-      if (!orderToUpdate) return;
-      
-      const oldOrder = { ...orderToUpdate };
-      
-      const updatedOrder = { ...orderToUpdate, items: newItems };
-      setActiveOrder(updatedOrder);
-      setActiveOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
-      
-      const result = await updateOrder(orderId, { items: newItems });
-      if (!result) {
-          setActiveOrder(oldOrder);
-          setActiveOrders(prev => prev.map(o => o.id === orderId ? oldOrder : o));
-          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order.' });
+    // Optimistic UI update
+    setActiveOrder(order);
+    if (isNew) {
+      setActiveOrders(prev => [...prev, order]);
+    } else {
+      setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
+    }
+
+    const savedOrder = await saveOrder(order);
+
+    if (savedOrder) {
+      // Update state with the actual data from the database
+      setActiveOrder(savedOrder);
+      setActiveOrders(prev => {
+        const newOrders = prev.filter(o => o.id !== order.id);
+        return [...newOrders, savedOrder];
+      });
+    } else {
+      // Revert on failure
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save order.' });
+      if (oldOrderState) {
+        setActiveOrder(oldOrderState);
+        setActiveOrders(prev => prev.map(o => o.id === oldOrderState.id ? oldOrderState : o));
+      } else {
+        setActiveOrder(null);
+        setActiveOrders(prev => prev.filter(o => o.id !== order.id));
       }
+    }
+    return savedOrder;
   }
 
 
@@ -106,6 +125,8 @@ export default function Home() {
 
     const itemToAdd: OrderItem = { ...item, quantity: 1, rate: Number(item.rate) };
 
+    let orderToUpdate: Order;
+
     if (activeOrder) {
       const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
       let newItems: OrderItem[];
@@ -119,23 +140,21 @@ export default function Home() {
       } else {
         newItems = [...activeOrder.items, itemToAdd];
       }
-      await updateOrderItems(activeOrder.id, newItems);
+      orderToUpdate = {...activeOrder, items: newItems };
+
     } else {
-      const newOrderData: Omit<Order, 'id' | 'created_at'> = {
+      // Create a new order object
+      orderToUpdate = {
+          id: tempId(), // Temporary client-side ID
           items: [itemToAdd],
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
           table_number: currentOrderType === 'dine-in' ? tableNumber : null,
           status: 'received',
+          created_at: new Date().toISOString(),
       };
-      const newOrder = await createOrder(newOrderData);
-      if(newOrder) {
-        setActiveOrders(prev => [...prev, newOrder]);
-        setActiveOrder(newOrder);
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create order.' });
-      }
     }
+    await updateAndSaveOrder(orderToUpdate);
   };
 
   const updateQuantity = (itemId: number, quantity: number) => {
@@ -146,20 +165,24 @@ export default function Home() {
        const newItems = activeOrder.items.map((item) =>
           item.id === itemId ? { ...item, quantity } : item
         );
-       updateOrderItems(activeOrder.id, newItems);
+       updateAndSaveOrder({ ...activeOrder, items: newItems });
     }
   };
 
   const removeFromOrder = (itemId: number) => {
     if (!activeOrder) return;
     const newItems = activeOrder.items.filter((item) => item.id !== itemId);
-    updateOrderItems(activeOrder.id, newItems);
+    updateAndSaveOrder({ ...activeOrder, items: newItems });
   };
 
   const clearOrder = async () => {
     if(!activeOrder) return;
 
     if(activeOrder.items.length === 0) {
+      if (!activeOrder.id || activeOrder.id < 0) {
+        setActiveOrder(null);
+        return;
+      }
       const success = await deleteOrder(activeOrder.id);
       if (success) {
           const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
@@ -174,16 +197,13 @@ export default function Home() {
       return;
     }
 
-    await updateOrderItems(activeOrder.id, []);
+    await updateAndSaveOrder({ ...activeOrder, items: []});
   };
 
   const completeOrder = async (completedOrder: Order) => {
-    const updatedOrder = await updateOrder(completedOrder.id, {
+    const updatedOrder = await saveOrder({
+        ...completedOrder,
         status: 'completed',
-        payment_method: completedOrder.payment_method,
-        subtotal: completedOrder.subtotal,
-        tax: completedOrder.tax,
-        total: completedOrder.total,
     });
     
     if (updatedOrder) {
@@ -243,7 +263,7 @@ export default function Home() {
             {isClient && !isLoading && activeOrders.length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
-                        orders={activeOrders} 
+                        orders={activeOrders.filter(o => o.id! > 0)} 
                         onSelectOrder={handleSelectOrder}
                         activeOrderId={activeOrder?.id}
                    />

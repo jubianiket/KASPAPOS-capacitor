@@ -32,6 +32,11 @@ const fromSupabase = (order: any): Order => {
 const toSupabase = (order: Partial<Order>) => {
     const payload: {[key: string]: any} = {};
 
+    // If the order has a real ID, include it for upsert
+    if (order.id && order.id > 0) {
+        payload.id = order.id;
+    }
+    
     if (order.status) payload.status = order.status;
     if (order.items) payload.items = order.items;
     if (order.subtotal !== undefined) payload.sub_total = order.subtotal;
@@ -40,7 +45,6 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
     
-    // Only include table_number if it has a value.
     if (order.table_number) {
         payload.table_number = order.table_number;
     }
@@ -50,6 +54,11 @@ const toSupabase = (order: Partial<Order>) => {
       payload.payment_method = order.payment_method;
     } else if(order.payment_status) {
         payload.payment_status = order.payment_status;
+    }
+
+    // Ensure status is always set for new orders
+    if (!payload.id) {
+        payload.status = 'received';
     }
 
     return payload;
@@ -108,53 +117,23 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
     return (data as any[]).map(fromSupabase);
 }
 
-export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
+
+export const saveOrder = async (order: Order): Promise<Order | null> => {
     const payload = toSupabase(order);
-    
-    // Ensure essential fields for creation are present
-    if (!payload.items) {
-        console.error("Error creating order: items are missing.");
-        return null;
-    }
-    if (!payload.order_type) {
-        console.error("Error creating order: order_type is missing.");
-        return null;
-    }
-    // Set a valid initial status if not present
-    if (!payload.status) {
-        payload.status = 'received';
-    }
-    
+
     const { data, error } = await supabase
         .from('orders')
-        .insert([payload])
+        .upsert(payload)
         .select()
         .single();
     
     if (error) {
-        console.error("Error creating order:", error);
+        console.error("Error saving order:", error);
         return null;
     }
     return fromSupabase(data);
 }
 
-
-export const updateOrder = async (orderId: number, updates: Partial<Order>): Promise<Order | null> => {
-    const updatePayload = toSupabase(updates);
-
-    const { data, error } = await supabase
-        .from('orders')
-        .update(updatePayload)
-        .eq('id', orderId)
-        .select()
-        .single();
-
-    if (error) {
-        console.error("Error updating order:", error);
-        return null;
-    }
-    return fromSupabase(data);
-}
 
 export const deleteOrder = async (orderId: number): Promise<boolean> => {
     const { error } = await supabase
