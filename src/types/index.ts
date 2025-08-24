@@ -45,4 +45,5 @@ export interface User {
     role: string;
     name: string;
     phone: number;
+    email: string;
 }

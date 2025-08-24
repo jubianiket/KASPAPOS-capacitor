@@ -18,6 +18,7 @@ export default function SignupPage() {
         password: '',
         name: '',
         phone: '',
+        email: '',
     });
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -81,6 +82,10 @@ export default function SignupPage() {
                          <div className="space-y-2">
                             <Label htmlFor="phone">Phone</Label>
                             <Input id="phone" type="tel" pattern="[0-9]*" value={formData.phone} onChange={handleChange} required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" value={formData.email} onChange={handleChange} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
