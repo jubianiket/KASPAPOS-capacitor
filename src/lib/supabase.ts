@@ -1,7 +1,6 @@
 
-
 import { createClient } from '@supabase/supabase-js';
-import type { Order, MenuItem, KitchenOrder, OrderItem, User } from '@/types';
+import type { Order, MenuItem, KitchenOrder, User, RestaurantSettings } from '@/types';
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -11,8 +10,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-const TAX_RATE = 0.05; // 5%
 
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
@@ -36,16 +33,14 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
-    const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
-    const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax;
-
+    // Tax calculation is now handled on the client with settings
+    // We just store the final calculated values
     const payload: { [key: string]: any } = {
         date: order.created_at || new Date().toISOString(),
         items: order.items, 
-        sub_total: subtotal,
-        gst: tax,
-        total: total,
+        sub_total: order.subtotal,
+        gst: order.tax,
+        total: order.total,
         order_type: order.order_type,
         table_number: order.table_number,
         payment_method: order.payment_method,
@@ -120,11 +115,9 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 
     const isNewOrder = order.id <= 0;
-    const payload = toSupabase(order);
     
     if (isNewOrder) {
-        // Exclude the negative temporary ID from the insert payload
-        const { id, ...insertPayload } = payload;
+        const { id, ...insertPayload } = toSupabase(order);
         
         console.log("Attempting to insert order:", insertPayload);
         const { data, error } = await supabase
@@ -139,7 +132,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        const { id, ...updatePayload } = payload;
+        const updatePayload = toSupabase(order);
 
         console.log(`Attempting to update order ${order.id}:`, updatePayload);
         const { data, error } = await supabase
@@ -227,4 +220,39 @@ export const signIn = async (login: string, password: string): Promise<User | nu
         return null;
     }
     return data as User;
+}
+
+// --- Restaurant Settings ---
+
+export const getSettings = async (userId: number): Promise<RestaurantSettings | null> => {
+    const { data, error } = await supabase
+        .from('restaurant_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+    
+    if(error && error.code !== 'PGRST116') { // PGRST116: "exact one row not found"
+        console.error("Error fetching settings:", error);
+        return null;
+    }
+
+    return data as RestaurantSettings | null;
+}
+
+
+export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
+    const { id, ...updateData } = settings;
+    
+    // Use upsert to create settings if they don't exist, or update them if they do.
+    const { data, error } = await supabase
+        .from('restaurant_settings')
+        .upsert(updateData)
+        .select()
+        .single();
+    
+    if (error) {
+        console.error("Error updating settings:", error);
+        return null;
+    }
+    return data as RestaurantSettings;
 }

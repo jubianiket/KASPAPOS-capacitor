@@ -1,17 +1,19 @@
+
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const tables = Array.from({ length: 12 }, (_, i) => i + 1);
-
 interface TableSelectionProps {
   selectedTable: number | null;
   onSelectTable: (table: number) => void;
   occupiedTables: (number | null)[];
+  tableCount: number;
 }
 
-export default function TableSelection({ selectedTable, onSelectTable, occupiedTables }: TableSelectionProps) {
+export default function TableSelection({ selectedTable, onSelectTable, occupiedTables, tableCount }: TableSelectionProps) {
+  const tables = Array.from({ length: tableCount }, (_, i) => i + 1);
+  
   return (
     <div>
       <h3 className="text-lg font-semibold mb-3">Select a Table</h3>

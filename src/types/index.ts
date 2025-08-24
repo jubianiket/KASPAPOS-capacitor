@@ -1,5 +1,4 @@
 
-
 export interface MenuItem {
   id: number;
   name: string;
@@ -50,4 +49,16 @@ export interface User {
     name: string;
     phone: number;
     email: string;
+}
+
+export interface RestaurantSettings {
+    id: number;
+    user_id: number;
+    is_bar: boolean;
+    is_restaurant: boolean;
+    vat_rate?: number;
+    igst_rate?: number;
+    cgst_rate?: number;
+    table_count: number;
+    phone_number: string;
 }

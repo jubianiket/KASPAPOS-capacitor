@@ -5,14 +5,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
-import type { OrderItem, MenuItem, Order, User } from '@/types';
+import type { OrderItem, MenuItem, Order, User, RestaurantSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 
 // Helper to generate temporary client-side IDs
@@ -24,6 +24,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
 
   const router = useRouter();
@@ -35,10 +36,14 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
 
-  const fetchOrders = useCallback(async () => {
+  const fetchInitialData = useCallback(async (currentUser: User) => {
       setIsLoading(true);
-      const orders = await getActiveOrders();
+      const [orders, fetchedSettings] = await Promise.all([
+          getActiveOrders(),
+          getSettings(currentUser.id)
+      ]);
       setActiveOrders(orders); // Fetches all non-paid orders
+      setSettings(fetchedSettings);
       setIsLoading(false);
   }, []);
 
@@ -47,11 +52,12 @@ export default function Home() {
     if (!storedUser) {
         router.replace('/login');
     } else {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
         setIsClient(true);
-        fetchOrders();
+        fetchInitialData(parsedUser);
     }
-  }, [router, fetchOrders]);
+  }, [router, fetchInitialData]);
 
   const occupiedTables = activeOrders
     .filter(o => o.order_type === 'dine-in' && o.table_number && o.id! > 0)
@@ -218,6 +224,25 @@ export default function Home() {
           created_at: new Date().toISOString(),
       };
     }
+    
+    // Recalculate totals before saving
+    const subtotal = orderToUpdate.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
+    let tax = 0;
+     if (settings) {
+        if(settings.is_restaurant && settings.cgst_rate && settings.igst_rate) {
+            tax += subtotal * (settings.cgst_rate / 100);
+            tax += subtotal * (settings.igst_rate / 100);
+        }
+        if (settings.is_bar && settings.vat_rate) {
+            tax += subtotal * (settings.vat_rate / 100);
+        }
+    }
+    const total = subtotal + tax;
+
+    orderToUpdate.subtotal = subtotal;
+    orderToUpdate.tax = tax;
+    orderToUpdate.total = total;
+    
     await updateAndSaveOrder(orderToUpdate);
   };
 
@@ -367,7 +392,7 @@ export default function Home() {
                   <div>
                       <Skeleton className="h-8 w-48 mb-3" />
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                        {Array.from({ length: 12 }).map((_, i) => (
+                        {Array.from({ length: settings?.table_count || 12 }).map((_, i) => (
                           <Skeleton key={i} className="aspect-square" />
                         ))}
                       </div>
@@ -381,6 +406,7 @@ export default function Home() {
                       setActiveOrder(existingOrder || null);
                     }}
                     occupiedTables={occupiedTables}
+                    tableCount={settings?.table_count || 12}
                   />
                 )}
               </div>

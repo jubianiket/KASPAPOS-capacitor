@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Ticket, UtensilsCrossed, LayoutDashboard, LogIn, LogOut } from 'lucide-react';
+import { Ticket, UtensilsCrossed, LayoutDashboard, LogIn, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useEffect, useState } from 'react';
@@ -78,6 +78,16 @@ export default function Header() {
                     <span className="hidden md:inline">{label}</span>
                     </Link>
                 ))}
+                 <Link
+                    href="/settings"
+                    className={cn(
+                        "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                        pathname === "/settings" ? "text-primary" : "text-muted-foreground"
+                    )}
+                    >
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden md:inline">Settings</span>
+                </Link>
                  <Button variant="ghost" size="icon" onClick={handleLogout}>
                     <LogOut className="h-4 w-4" />
                     <span className="sr-only">Logout</span>

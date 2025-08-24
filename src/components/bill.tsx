@@ -1,17 +1,16 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils, Send, CheckCheck } from 'lucide-react';
-import type { OrderItem, MenuItem, Order } from '@/types';
+import type { OrderItem, MenuItem, Order, RestaurantSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import { Badge } from './ui/badge';
-
-const TAX_RATE = 0.05; // 5%
+import { getSettings } from '@/lib/supabase'; // Assuming user is not needed here
 
 interface BillProps {
   order: Order | null;
@@ -34,16 +33,48 @@ export default function Bill({
   onMarkAsCompleted
 }: BillProps) {
   
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const orderItems = order?.items ?? [];
+  
+  useEffect(() => {
+    // Fetch settings when the component mounts or when a user becomes available.
+    const fetchSettings = async () => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const fetchedSettings = await getSettings(user.id);
+            setSettings(fetchedSettings);
+        }
+    };
+    fetchSettings();
+  }, []);
 
   const calculations = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.rate * item.quantity, 0);
-    const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax;
-    return { subtotal, tax, total };
-  }, [orderItems]);
+    
+    let tax = 0;
+    const taxBreakdown: { name: string, amount: number }[] = [];
 
-  const { subtotal, tax, total } = calculations;
+    if (settings) {
+        if(settings.is_restaurant && settings.cgst_rate && settings.igst_rate) {
+            const cgst = subtotal * (settings.cgst_rate / 100);
+            const igst = subtotal * (settings.igst_rate / 100);
+            tax += cgst + igst;
+            taxBreakdown.push({ name: `CGST (${settings.cgst_rate}%)`, amount: cgst});
+            taxBreakdown.push({ name: `IGST (${settings.igst_rate}%)`, amount: igst});
+        }
+        if (settings.is_bar && settings.vat_rate) {
+            const vat = subtotal * (settings.vat_rate / 100);
+            tax += vat;
+            taxBreakdown.push({ name: `VAT (${settings.vat_rate}%)`, amount: vat});
+        }
+    }
+
+    const total = subtotal + tax;
+    return { subtotal, tax, total, taxBreakdown };
+  }, [orderItems, settings]);
+
+  const { subtotal, tax, total, taxBreakdown } = calculations;
 
   const handleCompleteOrder = async (paymentMethod: NonNullable<Order['payment_method']>) => {
     if (order) {
@@ -177,10 +208,12 @@ export default function Bill({
                 <span>Subtotal</span>
                 <span>Rs.{subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
-                <span>Rs.{tax.toFixed(2)}</span>
-              </div>
+              {taxBreakdown.map(t => (
+                  <div key={t.name} className="flex justify-between">
+                    <span>{t.name}</span>
+                    <span>Rs.{t.amount.toFixed(2)}</span>
+                  </div>
+              ))}
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>
