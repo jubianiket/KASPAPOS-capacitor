@@ -37,8 +37,8 @@ const toSupabase = (order: Order) => {
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
     
-    // Determine the status to save to the database.
-    // 'pending' is a client-side only status.
+    // 'pending' is a client-side only status. It becomes 'received' when confirmed.
+    // 'completed' is set when the order is finalized before payment.
     const dbStatus = order.status === 'completed' ? 'completed' : 'received';
 
     const payload: { [key: string]: any } = {
@@ -60,10 +60,10 @@ const toSupabase = (order: Order) => {
         payload.id = order.id;
     }
     
-    // For new orders, the `date` is set by the DB default.
-    // For existing orders, we don't need to send the date back.
-    // So we never send `created_at` or `date` to Supabase.
-
+    // Supabase sets the 'date' on creation, so we don't send it.
+    // However, if we need to update a record that has a date, we could include it here.
+    // For now, we let the DB handle it.
+    
     return payload;
 }
 
@@ -96,9 +96,9 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['received', 'completed']) // Fetch both received and completed for the main view
-        .neq('payment_status', 'paid') // Filter out fully paid and completed orders from active view
-        .order('date', { ascending: false }); // Use 'date' column for sorting
+        .in('status', ['received', 'completed']) 
+        .neq('payment_status', 'paid') 
+        .order('date', { ascending: false });
 
     if (error) {
         console.error("Error fetching active orders:", error);
@@ -111,8 +111,8 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('payment_status', 'paid') // History should only show fully paid orders
-        .order('date', { ascending: false }); // Use 'date' column for sorting
+        .eq('payment_status', 'paid') 
+        .order('date', { ascending: false }); 
     
     if (error) {
         console.error("Error fetching completed orders:", error);
@@ -127,7 +127,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     
     const { data, error } = await supabase
         .from('orders')
-        .upsert(payload)
+        .upsert(payload, { onConflict: 'id' }) // Explicitly define the conflict column
         .select()
         .single();
     
@@ -179,4 +179,3 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     
     return data as KitchenOrder;
 }
-
