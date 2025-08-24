@@ -36,12 +36,18 @@ const toSupabase = (order: Order) => {
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
     
-    // 'pending' is a client-side only status. It becomes 'received' when confirmed.
-    // 'completed' is set when the order is finalized before payment.
-    const dbStatus = order.status === 'completed' ? 'completed' : order.status === 'received' ? 'received' : 'received';
+    // 'pending' is a client-side only status.
+    // It becomes 'received' when the order is first confirmed.
+    // It becomes 'completed' when it's finalized before payment.
+    let dbStatus: 'received' | 'completed';
+    if (order.status === 'completed' || order.payment_status === 'paid') {
+        dbStatus = 'completed';
+    } else {
+        dbStatus = 'received';
+    }
 
     const payload: { [key: string]: any } = {
-        date: order.created_at,
+        date: order.created_at || new Date().toISOString(),
         items: JSON.stringify(order.items), // Always stringify JSON for Supabase
         sub_total: subtotal,
         gst: tax,
@@ -54,6 +60,7 @@ const toSupabase = (order: Order) => {
         status: dbStatus,
     };
     
+    // Only include ID if it's a real one from the DB
     if (order.id > 0) {
         payload.id = order.id;
     }
@@ -117,11 +124,16 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 
 
 export const saveOrder = async (order: Order): Promise<Order | null> => {
+    // Exclude 'pending' status orders from being saved to the database.
+    if (order.status === 'pending') {
+        return order;
+    }
+    
     const payload = toSupabase(order);
     
     const { data, error } = await supabase
         .from('orders')
-        .upsert(payload, { onConflict: 'id' })
+        .upsert(payload, { onConflict: 'id' }) // Use 'id' for conflict resolution
         .select()
         .single();
     
