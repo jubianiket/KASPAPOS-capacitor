@@ -45,7 +45,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
         console.error("Error fetching active orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, id: o.id.toString(), created_at: o.date})) as Order[];
+    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total ?? 0, total: o.total ?? 0, tax: o.gst ?? 0, discount: 0 })) as Order[];
 };
 
 export const getCompletedOrders = async (): Promise<Order[]> => {
@@ -59,7 +59,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         console.error("Error fetching completed orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, id: o.id.toString(), created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
+    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
@@ -79,13 +79,12 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Prom
         console.error("Error creating order:", error);
         return null;
     }
-    const newOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
-    newOrder.id = newOrder.id.toString();
+    const newOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total ?? 0, total: data.total ?? 0, tax: data.gst ?? 0, discount: 0 } as Order;
     return newOrder;
 }
 
 
-export const updateOrder = async (orderId: string, updates: Partial<Order>): Promise<Order | null> => {
+export const updateOrder = async (orderId: number, updates: Partial<Order>): Promise<Order | null> => {
     const updatePayload: {[key: string]: any} = {};
     if (updates.status) updatePayload.status = updates.status;
     if (updates.items) updatePayload.items = updates.items;
@@ -101,7 +100,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
     const { data, error } = await supabase
         .from('orders')
         .update(updatePayload)
-        .eq('id', parseInt(orderId, 10))
+        .eq('id', orderId)
         .select()
         .single();
 
@@ -109,16 +108,15 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         console.error("Error updating order:", error);
         return null;
     }
-    const updatedOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
-    updatedOrder.id = updatedOrder.id.toString();
+    const updatedOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total ?? 0, total: data.total ?? 0, tax: data.gst ?? 0, discount: 0 } as Order;
     return updatedOrder;
 }
 
-export const deleteOrder = async (orderId: string): Promise<boolean> => {
+export const deleteOrder = async (orderId: number): Promise<boolean> => {
     const { error } = await supabase
         .from('orders')
         .delete()
-        .eq('id', parseInt(orderId, 10));
+        .eq('id', orderId);
     
     if (error) {
         console.error("Error deleting order:", error);
@@ -126,3 +124,5 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
     }
     return true;
 }
+
+    

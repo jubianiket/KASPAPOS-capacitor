@@ -9,15 +9,15 @@ import { Bike, Utensils, Hash, ListOrdered } from "lucide-react";
 
 interface ActiveOrdersProps {
   orders: Order[];
-  onSelectOrder: (orderId: string) => void;
-  activeOrderId?: string | null;
+  onSelectOrder: (orderId: number) => void;
+  activeOrderId?: number | null;
 }
 
 export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: ActiveOrdersProps) {
 
   const getOrderTitle = (order: Order) => {
     if (order.order_type === 'Delivery' || order.order_type === 'delivery') {
-      return `Delivery #${order.id.slice(-4)}`;
+      return `Delivery #${order.id.toString().slice(-4)}`;
     }
     return `Table ${order.table_number}`;
   }
@@ -68,3 +68,5 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
     </div>
   );
 }
+
+    

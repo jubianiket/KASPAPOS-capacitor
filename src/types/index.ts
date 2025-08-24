@@ -13,7 +13,7 @@ export interface OrderItem extends MenuItem {
 }
 
 export interface Order {
-  id: string;
+  id: number;
   created_at: string;
   items: OrderItem[];
   subtotal: number;
@@ -21,7 +21,9 @@ export interface Order {
   discount: number;
   total: number;
   payment_method?: 'Cash' | 'Card' | 'Mobile';
-  order_type: 'Dine In' | 'Delivery';
+  order_type: 'Dine In' | 'Delivery' | 'dine-in' | 'delivery';
   table_number?: string;
   status: 'pending' | 'confirmed' | 'completed' | 'received' | 'preparing' | 'ready';
 }
+
+    

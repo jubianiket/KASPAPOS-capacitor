@@ -101,7 +101,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableNumber, orderType]);
   
-  const handleSelectOrder = (orderId: string) => {
+  const handleSelectOrder = (orderId: number) => {
     const selected = activeOrders.find(o => o.id === orderId);
     if(selected) {
         if (selected.order_type === 'Dine In' || selected.order_type === 'dine-in') {
@@ -192,7 +192,7 @@ export default function Home() {
     if(activeOrder.status === 'pending') {
         const success = await deleteOrder(activeOrder.id);
         if (success) {
-            setActiveOrders(prev => prev.filter(o => o.id !== activeOrder.id));
+            setActiveOrders(prev => prev.filter(o => o.id !== activeOrder!.id));
             if(activeOrder.order_type === 'Dine In') {
                 setTableNumber('');
             }
@@ -332,8 +332,8 @@ export default function Home() {
                 )}
               </div>
             )}
+            <MenuGrid onAddToOrder={addToOrder} />
           </div>
-          <MenuGrid onAddToOrder={addToOrder} />
         </div>
         <div className="mt-8 lg:mt-0">
           <Bill
@@ -350,3 +350,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

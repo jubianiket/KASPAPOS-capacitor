@@ -53,7 +53,7 @@ export default function OrderHistory() {
   return (
     <Accordion type="single" collapsible className="w-full">
       {orders.map((order) => (
-        <AccordionItem key={order.id} value={order.id}>
+        <AccordionItem key={order.id} value={order.id.toString()}>
           <AccordionTrigger>
             <div className="flex justify-between items-center w-full pr-4">
               <div className="flex items-center gap-4">
@@ -123,3 +123,5 @@ export default function OrderHistory() {
     </Accordion>
   );
 }
+
+    
