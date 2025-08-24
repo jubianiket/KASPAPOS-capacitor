@@ -47,7 +47,6 @@ export default function Header() {
 
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
-    { href: '/menu', label: 'Menu', icon: ListPlus },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
   ];
