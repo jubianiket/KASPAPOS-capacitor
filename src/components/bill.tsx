@@ -2,14 +2,13 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { MinusCircle, PlusCircle, Sparkles, Trash2, X, Bike, Utensils } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils } from 'lucide-react';
 import type { OrderItem, MenuItem, Order } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
-import UpsellSuggestionsDrawer from './upsell-suggestions-drawer';
 import { Badge } from './ui/badge';
 
 const TAX_RATE = 0.05; // 5%
@@ -168,11 +167,6 @@ export default function Bill({
       </CardContent>
       {orderItems.length > 0 && (
         <CardFooter className="flex flex-col gap-2">
-           <UpsellSuggestionsDrawer orderItems={orderItems} onAddToOrder={onAddToOrder}>
-            <Button variant="outline" className="w-full bg-accent/20 hover:bg-accent/40 border-accent text-accent-foreground">
-              <Sparkles className="mr-2 h-4 w-4" /> AI Upsell Suggestions
-            </Button>
-           </UpsellSuggestionsDrawer>
            {order?.status === 'pending' && (
               <Button onClick={handleConfirmOrder} className="w-full">
                 Confirm Order
