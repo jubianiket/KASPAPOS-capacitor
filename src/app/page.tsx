@@ -75,7 +75,7 @@ export default function Home() {
       }
     } else { // Delivery
         // Allow creating a new delivery order, or view the first non-completed one
-        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
+        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.payment_status !== 'paid');
         setActiveOrder(deliveryOrder || null);
     }
   }, [tableNumber, orderType, activeOrders]);
