@@ -3,21 +3,23 @@
 
 import { useState } from 'react';
 import { Plus, Edit, Check } from 'lucide-react';
-import type { MenuItem } from '@/types';
+import type { MenuItem, GroupedMenuItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemCardProps {
-  item: MenuItem;
-  onAddToOrder: (item: MenuItem) => void;
+  item: GroupedMenuItem;
+  onAddToOrder: (item: GroupedMenuItem) => void;
   onUpdateItem: (item: MenuItem) => void;
 }
 
 export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuItemCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [newRate, setNewRate] = useState(item.rate);
+  // For simplicity, we edit the first portion's rate.
+  // A more complex implementation could allow editing all portion prices at once.
+  const [newRate, setNewRate] = useState(item.baseRate);
   const { toast } = useToast();
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,11 +31,13 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
   };
 
   const handleSavePrice = () => {
-    if (newRate !== item.rate) {
-      onUpdateItem({ ...item, rate: newRate });
+    // When saving, we update the price of the first portion in the group.
+    const itemToUpdate = item.portions[0];
+    if (newRate !== itemToUpdate.rate) {
+      onUpdateItem({ ...itemToUpdate, rate: newRate });
       toast({
         title: 'Price Updated',
-        description: `${item.name} price has been updated to Rs.${newRate.toFixed(2)}`,
+        description: `${item.name} base price has been updated to Rs.${newRate.toFixed(2)}`,
       })
     }
     setIsEditing(false);
@@ -75,10 +79,13 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
             </div>
         ) : (
             <div className="flex items-center gap-2">
-                <p className="text-lg font-bold text-primary">Rs.{Number(item.rate).toFixed(2)}</p>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={handleEditClick}>
-                    <Edit className="h-4 w-4" />
-                </Button>
+                <p className="text-lg font-bold text-primary">Rs.{Number(item.baseRate).toFixed(2)}</p>
+                {/* Price editing is simplified to only edit the base rate. A more complex UI would be needed to edit all portion prices. */}
+                {item.portions.length === 1 && (
+                     <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={handleEditClick}>
+                        <Edit className="h-4 w-4" />
+                    </Button>
+                )}
             </div>
         )}
         <Button size="icon" variant="outline" aria-label={`Add ${item.name} to order`}>
@@ -88,3 +95,5 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
     </Card>
   );
 }
+
+    

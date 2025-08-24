@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import type { MenuItem } from '@/types';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import type { MenuItem, GroupedMenuItem } from '@/types';
 import MenuItemCard from './menu-item-card';
 import { getMenuItems, updateMenuItem } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
@@ -41,7 +41,7 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<GroupedMenuItem | null>(null);
   const { toast } = useToast();
 
   const fetchMenuItems = useCallback(async () => {
@@ -58,6 +58,26 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
   useEffect(() => {
     fetchMenuItems();
   }, [fetchMenuItems]);
+  
+  const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
+    const itemMap = new Map<string, GroupedMenuItem>();
+
+    menuItems.forEach(item => {
+      let group = itemMap.get(item.name);
+      if (!group) {
+        group = {
+          name: item.name,
+          category: item.category,
+          baseRate: item.rate, // Use first item's rate as a base for display
+          portions: [],
+        };
+        itemMap.set(item.name, group);
+      }
+      group.portions.push(item);
+    });
+
+    return Array.from(itemMap.values());
+  }, [menuItems]);
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when category changes
@@ -81,24 +101,32 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
     }
   };
 
-  const handleSelectItemForPortion = (item: MenuItem) => {
-    setSelectedItem(item);
+  const handleSelectItemForPortion = (item: GroupedMenuItem) => {
+    if (item.portions.length === 1 && item.portions[0].portion === 'Regular') {
+        // If there's only one 'Regular' portion, add it directly
+        onAddToOrder(item.portions[0], item.portions[0].portion || 'Regular');
+    } else {
+        setSelectedItem(item);
+    }
   }
 
-  const handlePortionConfirm = (portion: string) => {
+  const handlePortionConfirm = (portionName: string) => {
     if (selectedItem) {
-        onAddToOrder(selectedItem, portion);
-        toast({
-            title: "Item Added",
-            description: `${selectedItem.name} (${portion}) was added to the order.`
-        });
+        const selectedPortionItem = selectedItem.portions.find(p => p.portion === portionName);
+        if (selectedPortionItem) {
+            onAddToOrder(selectedPortionItem, selectedPortionItem.portion || 'Regular');
+            toast({
+                title: "Item Added",
+                description: `${selectedItem.name} (${portionName}) was added to the order.`
+            });
+        }
     }
     setSelectedItem(null);
   }
 
   const filteredMenuItems = selectedCategory === 'All'
-    ? menuItems
-    : menuItems.filter(item => item.category === selectedCategory);
+    ? groupedMenuItems
+    : groupedMenuItems.filter(item => item.category === selectedCategory);
 
   const totalPages = Math.ceil(filteredMenuItems.length / ITEMS_PER_PAGE);
   const paginatedItems = filteredMenuItems.slice(
@@ -133,6 +161,7 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
                 isOpen={!!selectedItem}
                 onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
                 itemName={selectedItem.name}
+                portions={selectedItem.portions}
                 onConfirm={handlePortionConfirm}
             />
         )}
@@ -155,7 +184,7 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {paginatedItems.map((item) => (
                     <MenuItemCard 
-                      key={item.id} 
+                      key={item.name} 
                       item={item} 
                       onAddToOrder={() => handleSelectItemForPortion(item)} 
                       onUpdateItem={handleUpdateItem}
@@ -187,3 +216,5 @@ const CardSkeleton = () => (
         </div>
     </div>
 )
+
+    

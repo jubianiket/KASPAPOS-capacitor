@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,24 +13,31 @@ import {
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CookingPot } from 'lucide-react';
+import type { MenuItem } from '@/types';
 
 interface PortionSelectionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   itemName: string;
+  portions: MenuItem[];
   onConfirm: (portion: string) => void;
 }
-
-// TODO: In the future, these could come from the menu item's data
-const PORTION_OPTIONS = ["Regular", "Large", "Family Pack"];
 
 export default function PortionSelectionDialog({
   isOpen,
   onOpenChange,
   itemName,
+  portions,
   onConfirm,
 }: PortionSelectionDialogProps) {
-  const [selectedPortion, setSelectedPortion] = useState<string>(PORTION_OPTIONS[0]);
+  const [selectedPortion, setSelectedPortion] = useState<string>('');
+
+  useEffect(() => {
+    // Set default selection when dialog opens
+    if (isOpen && portions.length > 0) {
+      setSelectedPortion(portions[0].portion || 'Regular');
+    }
+  }, [isOpen, portions]);
 
   const handleConfirm = () => {
     if (selectedPortion) {
@@ -55,12 +62,15 @@ export default function PortionSelectionDialog({
                 onValueChange={(value) => {
                     if (value) setSelectedPortion(value);
                 }}
-                className="flex-wrap"
+                className="flex-wrap justify-center"
             >
-                {PORTION_OPTIONS.map((portion) => (
-                    <ToggleGroupItem key={portion} value={portion} className="gap-2">
+                {portions.map((portionItem) => (
+                    <ToggleGroupItem key={portionItem.id} value={portionItem.portion || 'Regular'} className="gap-2">
                         <CookingPot className="h-4 w-4" />
-                        {portion}
+                        <div>
+                            <span>{portionItem.portion}</span>
+                            <span className="text-xs text-muted-foreground ml-2">Rs.{portionItem.rate.toFixed(2)}</span>
+                        </div>
                     </ToggleGroupItem>
                 ))}
             </ToggleGroup>
@@ -75,3 +85,5 @@ export default function PortionSelectionDialog({
     </Dialog>
   );
 }
+
+    

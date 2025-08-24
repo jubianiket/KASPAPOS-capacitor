@@ -1,4 +1,5 @@
 
+
 export interface MenuItem {
   id: number;
   name: string;
@@ -7,6 +8,13 @@ export interface MenuItem {
   available?: boolean;
   portion?: string;
   is_active?: boolean;
+}
+
+export interface GroupedMenuItem {
+  name: string;
+  category: string;
+  baseRate: number;
+  portions: MenuItem[];
 }
 
 export interface OrderItem extends MenuItem {
@@ -67,3 +75,5 @@ export interface RestaurantSettings {
     igst?: number;
     cgst?: number;
 }
+
+    
