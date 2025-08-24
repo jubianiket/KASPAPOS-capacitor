@@ -32,7 +32,6 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
-    // Recalculate totals to ensure data integrity
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
@@ -48,19 +47,11 @@ const toSupabase = (order: Order) => {
         date: order.created_at || new Date().toISOString(),
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
+        status: order.status === 'completed' ? 'completed' : 'received',
     };
 
-    // Only include the ID if it's a real, positive number for upsert.
     if (order.id && order.id > 0) {
         payload.id = order.id;
-    }
-
-    // The only valid statuses for the 'orders' table are 'received' and 'completed'.
-    // Any other state (including client-side 'pending') should be 'received' in the database.
-    if (order.status === 'completed') {
-        payload.status = 'completed';
-    } else {
-        payload.status = 'received';
     }
 
     return payload;
@@ -73,7 +64,6 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         console.error("Error fetching menu items:", error);
         return [];
     }
-    // Ensure rate is always a number
     return data.map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
 }
 
@@ -139,7 +129,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
 
 
 export const deleteOrder = async (orderId: number): Promise<boolean> => {
-    const { error }_ = await supabase
+    const { error } = await supabase
         .from('orders')
         .delete()
         .eq('id', orderId);
