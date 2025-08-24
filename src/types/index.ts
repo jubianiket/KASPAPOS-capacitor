@@ -25,7 +25,7 @@ export interface Order {
   payment_status?: 'paid' | 'unpaid';
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
-  status: 'pending' | 'received' | 'preparing' | 'ready' | 'completed';
+  status: 'pending' | 'received' | 'completed';
 }
 
 export interface KitchenOrder {

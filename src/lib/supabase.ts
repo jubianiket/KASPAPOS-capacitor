@@ -93,7 +93,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['received', 'preparing', 'ready'])
+        .eq('status', 'received')
         .order('date', { ascending: false });
 
     if (error) {
