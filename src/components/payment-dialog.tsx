@@ -23,6 +23,7 @@ interface PaymentDialogProps {
   onCompleteOrder: (paymentMethod: NonNullable<Order['payment_method']>) => Promise<Order | null | undefined>;
   disabled?: boolean;
   order: Order | null;
+  onNewOrder: () => void;
 }
 
 export default function PaymentDialog({
@@ -31,6 +32,7 @@ export default function PaymentDialog({
   onCompleteOrder,
   disabled = false,
   order,
+  onNewOrder,
 }: PaymentDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<NonNullable<Order['payment_method']> | ''>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -66,8 +68,9 @@ export default function PaymentDialog({
     }
   }
 
-  const handleNewOrder = () => {
+  const handleDialogClose = () => {
     setIsOpen(false);
+    onNewOrder();
   }
 
   return (
@@ -130,7 +133,7 @@ export default function PaymentDialog({
                     <BillReceipt order={completedOrder} />
                  </div>
                 <DialogFooter className="sm:justify-between gap-2">
-                    <Button onClick={handleNewOrder} variant="secondary">
+                    <Button onClick={handleDialogClose} variant="secondary">
                         Start New Order
                     </Button>
                 </DialogFooter>
@@ -140,3 +143,5 @@ export default function PaymentDialog({
     </Dialog>
   );
 }
+
+    

@@ -19,8 +19,8 @@ interface BillProps {
   onClearOrder: () => void;
   onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
   onConfirmOrder: () => void;
-  onMarkAsCompleted: () => void;
-  onAddToOrder: (item: MenuItem) => void;
+  onNewOrder: () => void;
+  onAddToOrder?: (item: MenuItem) => void; // Made optional as it seems unused here
 }
 
 export default function Bill({
@@ -30,7 +30,7 @@ export default function Bill({
   onClearOrder,
   onCompleteOrder,
   onConfirmOrder,
-  onMarkAsCompleted
+  onNewOrder
 }: BillProps) {
   
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
@@ -86,6 +86,8 @@ export default function Bill({
         tax,
         total,
         payment_method: paymentMethod,
+        payment_status: 'paid',
+        status: 'completed',
       };
       return await onCompleteOrder(orderToComplete);
     }
@@ -100,17 +102,30 @@ export default function Bill({
 
   const isPaymentDisabled = () => {
     if (!order) return true;
+    if (order.payment_status === 'paid') return true;
     if (order.status !== 'received') return true;
     return order.items.length === 0;
   }
   
   const isConfirmDisabled = () => {
       if (!order) return true;
+      if (order.status !== 'pending') return true;
       return order.items.length === 0;
   }
 
   const renderActionButtons = () => {
     if (!order || order.items.length === 0) return null;
+    
+    if (order.payment_status === 'paid') {
+        return (
+            <div className="text-center w-full">
+                <p className="text-lg font-semibold text-green-600 flex items-center justify-center gap-2">
+                    <CheckCheck className="h-6 w-6" />
+                    Payment Received
+                </p>
+            </div>
+        );
+    }
 
     switch(order.status) {
         case 'pending':
@@ -127,6 +142,7 @@ export default function Bill({
                     total={total} 
                     onCompleteOrder={handleCompleteOrder} 
                     disabled={isPaymentDisabled()}
+                    onNewOrder={onNewOrder}
                 >
                     <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
                     Proceed to Payment
@@ -144,7 +160,7 @@ export default function Bill({
       <CardHeader>
         <div className="flex items-center justify-between">
             <CardTitle>{getOrderTitle()}</CardTitle>
-            {orderItems.length > 0 && (
+            {orderItems.length > 0 && order.payment_status !== 'paid' && (
             <Button variant="ghost" size="icon" onClick={onClearOrder} className="text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-5 w-5" />
                 <span className="sr-only">Clear Order</span>
@@ -182,15 +198,15 @@ export default function Bill({
                       {item.portion && <p className="text-xs text-muted-foreground">{item.portion}</p>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity - 1)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity - 1)} disabled={order.payment_status === 'paid'}>
                         <MinusCircle className="w-4 h-4" />
                       </Button>
                       <span className="font-bold w-4 text-center">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity + 1)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity + 1)} disabled={order.payment_status === 'paid'}>
                         <PlusCircle className="w-4 h-4" />
                       </Button>
                         <p className="text-sm text-muted-foreground w-12 text-right">Rs.{(item.rate * item.quantity).toFixed(2)}</p>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id, item.portion)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id, item.portion)} disabled={order.payment_status === 'paid'}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -227,3 +243,5 @@ export default function Bill({
     </Card>
   );
 }
+
+    

@@ -312,12 +312,8 @@ export default function Home() {
     });
   
     if (updatedOrder) {
-      setActiveOrders((prev) => prev.filter((o) => o.id !== completedOrder.id));
-      setActiveOrder(null);
-      if (completedOrder.order_type === 'dine-in') {
-        setTableNumber(null);
-      }
-  
+      // Re-fetch active orders to get the updated list
+      fetchInitialData();
       toast({
         title: 'Payment Successful',
         description: 'The order has been completed and saved to history.',
@@ -345,6 +341,13 @@ export default function Home() {
     if (value) {
       setSelectedCategory(value);
     }
+  };
+
+  const handleNewOrder = () => {
+    setActiveOrder(null);
+    setTableNumber(null);
+    setOrderType('Dine In');
+    fetchInitialData();
   };
   
   if (!isClient || !user) {
@@ -415,7 +418,7 @@ export default function Home() {
                       setActiveOrder(existingOrder || null);
                     }}
                     occupiedTables={occupiedTables}
-                    tableCount={12} // This will be dynamic in a future step
+                    tableCount={settings?.table_count || 12}
                   />
                 )}
               </div>
@@ -450,11 +453,11 @@ export default function Home() {
             onClearOrder={clearOrder}
             onCompleteOrder={completeOrderAndPay}
             onConfirmOrder={() => confirmOrder()}
-            onMarkAsCompleted={markAsCompleted}
-            onAddToOrder={(item) => addToOrder(item, 'Regular')} // Fallback for suggestions
+            onNewOrder={handleNewOrder}
           />
         </div>
       </div>
     </div>
   );
-}
+
+    

@@ -74,6 +74,7 @@ export interface RestaurantSettings {
     vat?: number;
     igst?: number;
     cgst?: number;
+    table_count?: number;
 }
 
     
