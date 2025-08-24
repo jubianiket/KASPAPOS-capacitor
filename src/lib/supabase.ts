@@ -40,17 +40,15 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
     
-    // Only include table_number if it has a value for dine-in.
-    if (order.order_type === 'dine-in' && order.table_number) {
+    // Only include table_number if it has a value.
+    if (order.table_number) {
         payload.table_number = order.table_number;
     }
 
     if (order.payment_method) {
       payload.payment_status = 'paid';
       payload.payment_method = order.payment_method;
-    }
-    
-    if (order.payment_status) {
+    } else if(order.payment_status) {
         payload.payment_status = order.payment_status;
     }
 
@@ -112,6 +110,20 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
     const payload = toSupabase(order);
+    
+    // Ensure essential fields for creation are present
+    if (!payload.items) {
+        console.error("Error creating order: items are missing.");
+        return null;
+    }
+    if (!payload.order_type) {
+        console.error("Error creating order: order_type is missing.");
+        return null;
+    }
+    // Set a valid initial status if not present
+    if (!payload.status) {
+        payload.status = 'received';
+    }
     
     const { data, error } = await supabase
         .from('orders')

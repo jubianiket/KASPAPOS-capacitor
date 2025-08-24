@@ -51,6 +51,8 @@ export default function Home() {
         const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
         setActiveOrder(existingOrder || null);
     } else if (currentOrderType === 'delivery') {
+        // For delivery, find the first active delivery order that isn't completed.
+        // This simple logic might need refinement for multiple parallel delivery orders.
         const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
         setActiveOrder(deliveryOrder || null);
     } else {
@@ -123,7 +125,7 @@ export default function Home() {
           items: [itemToAdd],
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
-          table_number: tableNumber,
+          table_number: currentOrderType === 'dine-in' ? tableNumber : null,
           status: 'received',
       };
       const newOrder = await createOrder(newOrderData);
