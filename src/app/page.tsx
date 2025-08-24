@@ -13,6 +13,7 @@ import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
 import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder } from '@/lib/supabase';
+import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -23,6 +24,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -67,7 +69,7 @@ export default function Home() {
       }
     } else { // Delivery
         // Allow creating a new delivery order, or view the first non-completed one
-        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery');
+        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
         setActiveOrder(deliveryOrder || null);
     }
   }, [tableNumber, orderType, activeOrders]);
@@ -128,31 +130,35 @@ export default function Home() {
     return savedOrder;
   }
   
-  const confirmOrder = async () => {
+ const confirmOrder = async (deliveryDetails?: Partial<Order>) => {
     if (activeOrder && activeOrder.status === 'pending') {
-        const confirmedOrderData = {
-            ...activeOrder,
-            status: 'received' as const,
-        }
-        const savedMainOrder = await updateAndSaveOrder(confirmedOrderData);
-        
-        if (savedMainOrder) {
-            // After successfully saving the main order, create the kitchen order
-            const kitchenOrder = await createKitchenOrder(savedMainOrder);
-            if (kitchenOrder) {
-                toast({
-                    title: 'Order Confirmed',
-                    description: 'The order has been sent to the kitchen.'
-                });
-            } else {
-                // Handle failure to create kitchen order
-                toast({
-                    variant: 'destructive',
-                    title: 'Kitchen Order Failed',
-                    description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
-                });
-            }
-        }
+      if (activeOrder.order_type === 'delivery' && !deliveryDetails) {
+        setDeliveryDialogToggled(true);
+        return;
+      }
+      
+      const confirmedOrderData = {
+          ...activeOrder,
+          ...deliveryDetails,
+          status: 'received' as const,
+      }
+      const savedMainOrder = await updateAndSaveOrder(confirmedOrderData);
+      
+      if (savedMainOrder) {
+          const kitchenOrder = await createKitchenOrder(savedMainOrder);
+          if (kitchenOrder) {
+              toast({
+                  title: 'Order Confirmed',
+                  description: 'The order has been sent to the kitchen.'
+              });
+          } else {
+              toast({
+                  variant: 'destructive',
+                  title: 'Kitchen Order Failed',
+                  description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
+              });
+          }
+      }
     }
   }
   
@@ -319,6 +325,14 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
+       {activeOrder && activeOrder.order_type === 'delivery' && (
+        <DeliveryDetailsDialog
+          isOpen={isDeliveryDialogToggled}
+          onOpenChange={setDeliveryDialogToggled}
+          order={activeOrder}
+          onConfirm={(details) => confirmOrder(details)}
+        />
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
         <div className="lg:col-span-2">
           <div className="mb-6">
@@ -400,7 +414,7 @@ export default function Home() {
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
             onCompleteOrder={completeOrderAndPay}
-            onConfirmOrder={confirmOrder}
+            onConfirmOrder={() => confirmOrder()}
             onMarkAsCompleted={markAsCompleted}
             onAddToOrder={addToOrder}
           />

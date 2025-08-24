@@ -26,6 +26,10 @@ export interface Order {
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
   status: 'pending' | 'received' | 'completed';
+  phone_no?: string;
+  flat_no?: string;
+  building_no?: string;
+  address?: string;
 }
 
 export interface KitchenOrder {
@@ -41,7 +45,7 @@ export interface KitchenOrder {
 export interface User {
     id: number;
     username: string;
-    password?: string; // This can be optional on the client for security, but required for signup.
+    password?: string;
     role: string;
     name: string;
     phone: number;

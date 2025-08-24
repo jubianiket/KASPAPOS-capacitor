@@ -1,4 +1,5 @@
 
+
 import { createClient } from '@supabase/supabase-js';
 import type { Order, MenuItem, KitchenOrder, OrderItem, User } from '@/types';
 
@@ -27,6 +28,10 @@ const fromSupabase = (order: any): Order => {
         order_type: order.order_type,
         table_number: order.table_number,
         status: order.status,
+        phone_no: order.phone_no,
+        flat_no: order.flat_no,
+        building_no: order.building_no,
+        address: order.address,
     }
 }
 
@@ -46,12 +51,11 @@ const toSupabase = (order: Order) => {
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
         status: order.status,
+        phone_no: order.phone_no,
+        flat_no: order.flat_no,
+        building_no: order.building_no,
+        address: order.address,
     };
-    
-    // Don't include the ID for update payloads
-    if (order.id > 0) {
-        payload.id = order.id;
-    }
 
     return payload;
 }
@@ -116,9 +120,11 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 
     const isNewOrder = order.id <= 0;
+    const payload = toSupabase(order);
     
     if (isNewOrder) {
-        const { id, ...insertPayload } = toSupabase(order);
+        // Exclude the negative temporary ID from the insert payload
+        const { id, ...insertPayload } = payload;
         
         console.log("Attempting to insert order:", insertPayload);
         const { data, error } = await supabase
@@ -133,7 +139,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        const { id, ...updatePayload } = toSupabase(order);
+        const { id, ...updatePayload } = payload;
 
         console.log(`Attempting to update order ${order.id}:`, updatePayload);
         const { data, error } = await supabase
