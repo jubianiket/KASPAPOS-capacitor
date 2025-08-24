@@ -62,12 +62,25 @@ const toSupabase = (order: Order) => {
 
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-    const { data, error } = await supabase.from('menu_items').select('*');
+    const { data, error } = await supabase.from('menu_items').select('*').order('name');
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
     }
     return data.map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
+}
+
+export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | null> => {
+    const { data, error } = await supabase
+        .from('menu_items')
+        .insert(item)
+        .select()
+        .single();
+    if (error) {
+        console.error("Error adding menu item:", error);
+        return null;
+    }
+    return data as MenuItem;
 }
 
 export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
@@ -84,6 +97,19 @@ export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>)
     }
     return data as MenuItem;
 }
+
+export const deleteMenuItem = async (itemId: number): Promise<boolean> => {
+    const { error } = await supabase
+        .from('menu_items')
+        .delete()
+        .eq('id', itemId);
+    if (error) {
+        console.error("Error deleting menu item:", error);
+        return false;
+    }
+    return true;
+}
+
 
 export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase

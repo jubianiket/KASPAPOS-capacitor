@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Ticket, UtensilsCrossed, LayoutDashboard, LogIn, LogOut, Settings } from 'lucide-react';
+import { Ticket, UtensilsCrossed, LayoutDashboard, LogIn, LogOut, Settings, ListPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useEffect, useState } from 'react';
@@ -47,6 +47,7 @@ export default function Header() {
 
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
+    { href: '/menu', label: 'Menu', icon: ListPlus },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
   ];
