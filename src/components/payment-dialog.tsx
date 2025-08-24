@@ -58,17 +58,19 @@ export default function PaymentDialog({
   const handleOpenChange = (open: boolean) => {
     if (disabled || isProcessing) return;
     setIsOpen(open);
-     if (!open) {
-        // Reset state on close
-        setTimeout(() => {
-            setView('payment');
-            setPaymentMethod('');
-            setCompletedOrder(null);
-        }, 200);
+     if (!open && view === 'receipt') {
+        // If we close the dialog from the receipt view, trigger a new order.
+        onNewOrder();
     }
+    // Reset state on close
+    setTimeout(() => {
+        setView('payment');
+        setPaymentMethod('');
+        setCompletedOrder(null);
+    }, 200);
   }
 
-  const handleDialogClose = () => {
+  const handleDialogCloseAndNewOrder = () => {
     setIsOpen(false);
     onNewOrder();
   }
@@ -133,7 +135,7 @@ export default function PaymentDialog({
                     <BillReceipt order={completedOrder} />
                  </div>
                 <DialogFooter className="sm:justify-between gap-2">
-                    <Button onClick={handleDialogClose} variant="secondary">
+                    <Button onClick={handleDialogCloseAndNewOrder} variant="secondary">
                         Start New Order
                     </Button>
                 </DialogFooter>
@@ -143,5 +145,3 @@ export default function PaymentDialog({
     </Dialog>
   );
 }
-
-    

@@ -310,10 +310,8 @@ export default function Home() {
       payment_status: 'paid',
       status: 'completed',
     });
-  
+
     if (updatedOrder) {
-      // Re-fetch active orders to get the updated list
-      fetchInitialData();
       toast({
         title: 'Payment Successful',
         description: 'The order has been completed and saved to history.',
@@ -459,5 +457,4 @@ export default function Home() {
       </div>
     </div>
   );
-
-    
+}
