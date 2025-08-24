@@ -25,7 +25,7 @@ const fromSupabase = (order: any): Order => {
         payment_status: order.payment_status,
         order_type: order.order_type,
         table_number: order.table_number,
-        status: order.status,
+        status: order.status, // Correctly map the status column
     }
 }
 
@@ -40,7 +40,6 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.order_type) payload.order_type = order.order_type;
     
     // Only include table_number if it has a value.
-    // The DB will reject null values for this field if the order is not 'dine-in'
     if (order.table_number) {
         payload.table_number = order.table_number;
     }
@@ -49,6 +48,11 @@ const toSupabase = (order: Partial<Order>) => {
       payload.payment_status = 'paid';
       payload.payment_method = order.payment_method;
     }
+    
+    if (order.payment_status) {
+        payload.payment_status = order.payment_status;
+    }
+
     return payload;
 }
 
