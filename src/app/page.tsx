@@ -36,11 +36,11 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
 
-  const fetchInitialData = useCallback(async (currentUser: User) => {
+  const fetchInitialData = useCallback(async () => {
       setIsLoading(true);
       const [orders, fetchedSettings] = await Promise.all([
           getActiveOrders(),
-          getSettings(currentUser.id)
+          getSettings()
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
@@ -55,7 +55,7 @@ export default function Home() {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsClient(true);
-        fetchInitialData(parsedUser);
+        fetchInitialData();
     }
   }, [router, fetchInitialData]);
 
@@ -228,14 +228,8 @@ export default function Home() {
     // Recalculate totals before saving
     const subtotal = orderToUpdate.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     let tax = 0;
-     if (settings) {
-        if(settings.is_restaurant && settings.cgst_rate && settings.igst_rate) {
-            tax += subtotal * (settings.cgst_rate / 100);
-            tax += subtotal * (settings.igst_rate / 100);
-        }
-        if (settings.is_bar && settings.vat_rate) {
-            tax += subtotal * (settings.vat_rate / 100);
-        }
+     if (settings && settings.tax_enabled && settings.tax_rate) {
+        tax = subtotal * (settings.tax_rate / 100);
     }
     const total = subtotal + tax;
 
@@ -392,7 +386,7 @@ export default function Home() {
                   <div>
                       <Skeleton className="h-8 w-48 mb-3" />
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                        {Array.from({ length: settings?.table_count || 12 }).map((_, i) => (
+                        {Array.from({ length: 12 }).map((_, i) => (
                           <Skeleton key={i} className="aspect-square" />
                         ))}
                       </div>
@@ -406,7 +400,7 @@ export default function Home() {
                       setActiveOrder(existingOrder || null);
                     }}
                     occupiedTables={occupiedTables}
-                    tableCount={settings?.table_count || 12}
+                    tableCount={12} // This will be dynamic in a future step
                   />
                 )}
               </div>

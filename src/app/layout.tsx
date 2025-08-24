@@ -1,24 +1,50 @@
 
+'use client';
+
+import { useEffect, useState } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
+import { getSettings } from '@/lib/supabase';
+import type { RestaurantSettings } from '@/types';
 
-export const metadata: Metadata = {
-  title: 'KASPA POS',
-  description: 'A modern Point of Sale for restaurants',
-  icons: {
-    icon: [],
-  },
-};
+// This component can't be a server component because we need to fetch settings
+// and apply them dynamically, which requires client-side logic.
+// export const metadata: Metadata = {
+//   title: 'KASPA POS',
+//   description: 'A modern Point of Sale for restaurants',
+//   icons: {
+//     icon: [],
+//   },
+// };
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+
+  useEffect(() => {
+    const fetchAndApplySettings = async () => {
+      const fetchedSettings = await getSettings();
+      if (fetchedSettings) {
+        setSettings(fetchedSettings);
+        document.documentElement.classList.toggle('dark', !!fetchedSettings.dark_mode);
+        if (fetchedSettings.theme_color) {
+            document.documentElement.style.setProperty('--primary', fetchedSettings.theme_color);
+        }
+         if (fetchedSettings.restaurant_name) {
+            document.title = `${fetchedSettings.restaurant_name} | KASPA POS`;
+        }
+      }
+    };
+    fetchAndApplySettings();
+  }, []);
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

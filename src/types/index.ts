@@ -44,7 +44,7 @@ export interface KitchenOrder {
 export interface User {
     id: number;
     username: string;
-    password?: string;
+    password?: string; // Optional for safety on client-side
     role: string;
     name: string;
     phone: number;
@@ -53,12 +53,12 @@ export interface User {
 
 export interface RestaurantSettings {
     id: number;
-    user_id: number;
-    is_bar: boolean;
-    is_restaurant: boolean;
-    vat_rate?: number;
-    igst_rate?: number;
-    cgst_rate?: number;
-    table_count: number;
-    phone_number: string;
+    restaurant_name: string;
+    address?: string | null;
+    phone?: string | null;
+    tax_enabled?: boolean;
+    tax_rate?: number;
+    tax_id?: string | null;
+    dark_mode?: boolean;
+    theme_color?: string | null;
 }

@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import { Badge } from './ui/badge';
-import { getSettings } from '@/lib/supabase'; // Assuming user is not needed here
+import { getSettings } from '@/lib/supabase';
 
 interface BillProps {
   order: Order | null;
@@ -37,14 +37,9 @@ export default function Bill({
   const orderItems = order?.items ?? [];
   
   useEffect(() => {
-    // Fetch settings when the component mounts or when a user becomes available.
     const fetchSettings = async () => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            const fetchedSettings = await getSettings(user.id);
-            setSettings(fetchedSettings);
-        }
+        const fetchedSettings = await getSettings();
+        setSettings(fetchedSettings);
     };
     fetchSettings();
   }, []);
@@ -55,19 +50,10 @@ export default function Bill({
     let tax = 0;
     const taxBreakdown: { name: string, amount: number }[] = [];
 
-    if (settings) {
-        if(settings.is_restaurant && settings.cgst_rate && settings.igst_rate) {
-            const cgst = subtotal * (settings.cgst_rate / 100);
-            const igst = subtotal * (settings.igst_rate / 100);
-            tax += cgst + igst;
-            taxBreakdown.push({ name: `CGST (${settings.cgst_rate}%)`, amount: cgst});
-            taxBreakdown.push({ name: `IGST (${settings.igst_rate}%)`, amount: igst});
-        }
-        if (settings.is_bar && settings.vat_rate) {
-            const vat = subtotal * (settings.vat_rate / 100);
-            tax += vat;
-            taxBreakdown.push({ name: `VAT (${settings.vat_rate}%)`, amount: vat});
-        }
+    if (settings && settings.tax_enabled && settings.tax_rate) {
+        const taxAmount = subtotal * (settings.tax_rate / 100);
+        tax += taxAmount;
+        taxBreakdown.push({ name: `Tax (${settings.tax_rate}%)`, amount: taxAmount});
     }
 
     const total = subtotal + tax;

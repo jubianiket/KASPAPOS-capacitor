@@ -51,6 +51,11 @@ const toSupabase = (order: Order) => {
         building_no: order.building_no,
         address: order.address,
     };
+    
+    // Do not include id for insert operations
+    if (order.id > 0) {
+        payload.id = order.id;
+    }
 
     return payload;
 }
@@ -119,7 +124,6 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     if (isNewOrder) {
         const { id, ...insertPayload } = toSupabase(order);
         
-        console.log("Attempting to insert order:", insertPayload);
         const { data, error } = await supabase
             .from('orders')
             .insert(insertPayload)
@@ -132,12 +136,11 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        const { id, ...updatePayload } = toSupabase(order);
-
-        console.log(`Attempting to update order ${order.id}:`, updatePayload);
+        const payload = toSupabase(order);
+        
         const { data, error } = await supabase
             .from('orders')
-            .update(updatePayload)
+            .update(payload)
             .eq('id', order.id)
             .select()
             .single();
@@ -193,7 +196,7 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication ---
 
-export const signUp = async (userData: Omit<User, 'id' | 'role' | 'password'> & { password?: string }): Promise<User | null> => {
+export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User | null> => {
     const { data, error } = await supabase
         .from('users')
         .insert({ ...userData, role: 'staff' }) // Default role
@@ -224,11 +227,11 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 
 // --- Restaurant Settings ---
 
-export const getSettings = async (userId: number): Promise<RestaurantSettings | null> => {
+export const getSettings = async (): Promise<RestaurantSettings | null> => {
     const { data, error } = await supabase
-        .from('settings')
+        .from('restaurant_settings')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', 1)
         .single();
     
     if(error && error.code !== 'PGRST116') { // PGRST116: "exact one row not found"
@@ -245,8 +248,8 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
     
     // Use upsert to create settings if they don't exist, or update them if they do.
     const { data, error } = await supabase
-        .from('settings')
-        .upsert(updateData)
+        .from('restaurant_settings')
+        .upsert({ ...updateData, id: 1 })
         .select()
         .single();
     

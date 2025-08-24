@@ -8,22 +8,23 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { RestaurantSettings, User } from '@/types';
+import type { RestaurantSettings } from '@/types';
 import { getSettings, updateSettings } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 
 const settingsSchema = z.object({
-  is_bar: z.boolean().default(false),
-  is_restaurant: z.boolean().default(false),
-  vat_rate: z.coerce.number().min(0).optional(),
-  igst_rate: z.coerce.number().min(0).optional(),
-  cgst_rate: z.coerce.number().min(0).optional(),
-  table_count: z.coerce.number().int().min(1).max(100),
-  phone_number: z.string().min(1, 'Phone number is required'),
+  restaurant_name: z.string().min(1, 'Restaurant name is required'),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  tax_enabled: z.boolean().default(true),
+  tax_rate: z.coerce.number().min(0).optional(),
+  tax_id: z.string().optional(),
+  dark_mode: z.boolean().default(false),
+  theme_color: z.string().optional(),
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -31,7 +32,6 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 export default function SettingsPage() {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -40,24 +40,31 @@ export default function SettingsPage() {
     control,
     watch,
     reset,
-    formState: { isDirty, isSubmitting },
+    formState: { isDirty, isSubmitting, errors },
   } = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      restaurant_name: '',
+      address: '',
+      phone: '',
+      tax_enabled: true,
+      tax_rate: 0,
+      tax_id: '',
+      dark_mode: false,
+      theme_color: '',
+    }
   });
 
-  const isBar = watch('is_bar');
-  const isRestaurant = watch('is_restaurant');
+  const taxEnabled = watch('tax_enabled');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       router.replace('/login');
     } else {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
       const fetchSettings = async () => {
         setIsLoading(true);
-        const fetchedSettings = await getSettings(parsedUser.id);
+        const fetchedSettings = await getSettings();
         if (fetchedSettings) {
           setSettings(fetchedSettings);
           reset(fetchedSettings);
@@ -69,26 +76,32 @@ export default function SettingsPage() {
   }, [router, reset]);
 
   const onSubmit = async (data: SettingsFormData) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-      return;
-    }
     const settingsToSave: RestaurantSettings = {
-      ...(settings || { id: -1, user_id: user.id }),
+      ...(settings || { id: 1 }), // Always use id: 1
       ...data,
-      vat_rate: data.is_bar ? data.vat_rate : 0,
-      igst_rate: data.is_restaurant ? data.igst_rate : 0,
-      cgst_rate: data.is_restaurant ? data.cgst_rate : 0,
+      tax_rate: data.tax_enabled ? data.tax_rate : 0,
     };
+    
     const updated = await updateSettings(settingsToSave);
     if (updated) {
       setSettings(updated);
       reset(updated); // Re-sync form with new data
       toast({ title: 'Success', description: 'Settings saved successfully.' });
+      // Optional: force a reload to apply theme changes
+      window.location.reload();
     } else {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
   };
+  
+   useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      if (name === 'dark_mode') {
+        document.documentElement.classList.toggle('dark', value.dark_mode);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   if (isLoading) {
     return <SettingsSkeleton />;
@@ -104,98 +117,107 @@ export default function SettingsPage() {
             <CardDescription>Manage your restaurant's details and operational parameters.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Restaurant Type</Label>
-              <div className="flex gap-4 items-center">
-                <Controller
-                  name="is_restaurant"
+            <Controller
+              name="restaurant_name"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label htmlFor="restaurant_name">Restaurant Name</Label>
+                  <Input id="restaurant_name" {...field} />
+                  {errors.restaurant_name && <p className="text-sm text-destructive">{errors.restaurant_name.message}</p>}
+                </div>
+              )}
+            />
+             <Controller
+              name="address"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" {...field} value={field.value || ''} />
+                </div>
+              )}
+            />
+             <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input id="phone" type="tel" {...field} value={field.value || ''} />
+                </div>
+              )}
+            />
+            
+            <Separator />
+            
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">Tax Settings</h3>
+                 <Controller
+                  name="tax_enabled"
                   control={control}
                   render={({ field }) => (
                     <div className="flex items-center space-x-2">
-                      <Checkbox id="is_restaurant" checked={field.value} onCheckedChange={field.onChange} />
-                      <Label htmlFor="is_restaurant">Restaurant</Label>
+                        <Switch id="tax_enabled" checked={field.value} onCheckedChange={field.onChange} />
+                        <Label htmlFor="tax_enabled">Enable Tax Calculations</Label>
                     </div>
                   )}
                 />
-                <Controller
-                  name="is_bar"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="is_bar" checked={field.value} onCheckedChange={field.onChange} />
-                      <Label htmlFor="is_bar">Bar</Label>
+                {taxEnabled && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <Controller
+                        name="tax_rate"
+                        control={control}
+                        render={({ field }) => (
+                            <div className="space-y-2">
+                            <Label htmlFor="tax_rate">Tax Rate (%)</Label>
+                            <Input id="tax_rate" type="number" step="0.01" {...field} value={field.value || ''} />
+                            </div>
+                        )}
+                        />
+                        <Controller
+                        name="tax_id"
+                        control={control}
+                        render={({ field }) => (
+                            <div className="space-y-2">
+                            <Label htmlFor="tax_id">Tax ID (e.g., GSTIN)</Label>
+                            <Input id="tax_id" {...field} value={field.value || ''} />
+                            </div>
+                        )}
+                        />
                     </div>
-                  )}
-                />
-              </div>
+                )}
             </div>
 
-            {isRestaurant && (
-              <div className="grid grid-cols-2 gap-4">
-                <Controller
-                  name="cgst_rate"
+            <Separator />
+            
+             <div className="space-y-4">
+                <h3 className="text-lg font-medium">Appearance</h3>
+                 <Controller
+                  name="dark_mode"
                   control={control}
-                  render={({ field, fieldState }) => (
-                    <div className="space-y-2">
-                      <Label htmlFor="cgst_rate">CGST Rate (%)</Label>
-                      <Input id="cgst_rate" type="number" step="0.01" {...field} value={field.value || ''} />
-                      {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2">
+                       <Switch id="dark_mode" checked={field.value} onCheckedChange={field.onChange} />
+                       <Label htmlFor="dark_mode">Enable Dark Mode</Label>
                     </div>
                   )}
                 />
-                <Controller
-                  name="igst_rate"
+                 <Controller
+                  name="theme_color"
                   control={control}
-                  render={({ field, fieldState }) => (
+                  render={({ field }) => (
                     <div className="space-y-2">
-                      <Label htmlFor="igst_rate">IGST Rate (%)</Label>
-                      <Input id="igst_rate" type="number" step="0.01" {...field} value={field.value || ''} />
-                      {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+                      <Label htmlFor="theme_color">Theme Color (HSL)</Label>
+                      <Input id="theme_color" {...field} value={field.value || ''} placeholder="e.g., 240 5.9% 10%"/>
+                       <p className="text-xs text-muted-foreground">
+                        Enter a HSL color value for the primary theme color. Find values using an online color picker.
+                      </p>
                     </div>
                   )}
                 />
-              </div>
-            )}
+             </div>
 
-            {isBar && (
-              <Controller
-                name="vat_rate"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="vat_rate">VAT Rate (%)</Label>
-                    <Input id="vat_rate" type="number" step="0.01" {...field} value={field.value || ''} />
-                    {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
-                  </div>
-                )}
-              />
-            )}
-            
-            <hr/>
-            
-            <Controller
-              name="table_count"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div className="space-y-2">
-                  <Label htmlFor="table_count">Number of Tables</Label>
-                  <Input id="table_count" type="number" {...field} value={field.value || ''} />
-                  {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
-                </div>
-              )}
-            />
-
-            <Controller
-              name="phone_number"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Restaurant Phone</Label>
-                  <Input id="phone_number" type="tel" {...field} value={field.value || ''}/>
-                   {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
-                </div>
-              )}
-            />
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={!isDirty || isSubmitting}>
