@@ -18,7 +18,7 @@ const fromSupabase = (order: any): Order => {
     return {
         id: order.id,
         created_at: order.date, // Map 'date' from DB to 'created_at' in app
-        items: order.items,
+        items: Array.isArray(order.items) ? order.items : [],
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
         discount: order.discount ?? 0,
@@ -41,7 +41,7 @@ const toSupabase = (order: Order) => {
     const dbStatus = order.status === 'completed' ? 'completed' : order.status === 'received' ? 'received' : 'received';
 
     const payload: { [key: string]: any } = {
-        items: order.items,
+        items: JSON.stringify(order.items), // Always stringify JSON for Supabase
         sub_total: subtotal,
         gst: tax,
         total: total,
@@ -56,9 +56,6 @@ const toSupabase = (order: Order) => {
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
-    
-    // The database's `date` column will be set by `default now()` on insert.
-    // We don't need to send a value for it.
     
     return payload;
 }
