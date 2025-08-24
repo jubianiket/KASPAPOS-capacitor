@@ -16,8 +16,7 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         console.error("Error fetching menu items:", error);
         return [];
     }
-    // Map 'rate' to 'price' to match what components might expect, or update components
-    return data.map(item => ({...item, price: item.rate})) as MenuItem[];
+    return data as MenuItem[];
 }
 
 export const getActiveOrders = async (): Promise<Order[]> => {
