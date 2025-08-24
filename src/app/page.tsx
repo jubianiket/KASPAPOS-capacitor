@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
 import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
+import CustomItemDialog from '@/components/custom-item-dialog';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -251,6 +252,22 @@ export default function Home() {
     
     await updateAndSaveOrder(orderToUpdate);
   };
+  
+    const addCustomItemToOrder = (itemName: string, itemRate: number) => {
+    const customItem: MenuItem = {
+      id: tempId(), // Use a temporary negative ID for custom items
+      name: itemName,
+      rate: itemRate,
+      category: 'Custom',
+      portion: 'Custom',
+    };
+    addToOrder(customItem, 'Custom');
+    toast({
+      title: 'Custom Item Added',
+      description: `${itemName} was added to the order.`,
+    });
+  };
+
 
   const updateQuantity = (itemId: number, portion: string | undefined, quantity: number) => {
      if (!activeOrder) return;
@@ -308,7 +325,6 @@ export default function Home() {
     const updatedOrder = await saveOrder({
       ...completedOrder,
       payment_status: 'paid',
-      status: 'completed',
     });
 
     if (updatedOrder) {
@@ -422,7 +438,10 @@ export default function Home() {
               </div>
             )}
             <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">Menu Categories</h3>
+                 <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold">Menu Categories</h3>
+                    <CustomItemDialog onAddItem={addCustomItemToOrder} />
+                </div>
                 <ToggleGroup 
                     type="single" 
                     value={selectedCategory} 
