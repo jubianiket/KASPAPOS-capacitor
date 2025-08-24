@@ -115,10 +115,6 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
         const selectedPortionItem = selectedItem.portions.find(p => p.portion === portionName);
         if (selectedPortionItem) {
             onAddToOrder(selectedPortionItem, selectedPortionItem.portion || 'Regular');
-            toast({
-                title: "Item Added",
-                description: `${selectedItem.name} (${portionName}) was added to the order.`
-            });
         }
     }
     setSelectedItem(null);

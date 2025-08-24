@@ -186,7 +186,7 @@ export default function Home() {
         toast({
             variant: "destructive",
             title: "No table selected",
-            description: "Please select a table before adding items.",
+            description: "Please select a table before adding items to a Dine In order.",
         });
         return;
     }
@@ -250,7 +250,14 @@ export default function Home() {
     orderToUpdate.tax = tax;
     orderToUpdate.total = total;
     
-    await updateAndSaveOrder(orderToUpdate);
+    const updatedOrder = await updateAndSaveOrder(orderToUpdate);
+
+    if (updatedOrder) {
+      toast({
+          title: "Item Added",
+          description: `${item.name} (${portion}) was added to the order.`
+      });
+    }
   };
   
     const addCustomItemToOrder = (itemName: string, itemRate: number) => {
@@ -259,7 +266,7 @@ export default function Home() {
         toast({
             variant: "destructive",
             title: "No table selected",
-            description: "Please select a table before adding items.",
+            description: "Please select a table before adding items to a Dine In order.",
         });
         return;
     }
