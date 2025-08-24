@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sheet, Ticket, UtensilsCrossed } from 'lucide-react';
+import { Sheet, Ticket, UtensilsCrossed, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Header() {
@@ -10,6 +11,7 @@ export default function Header() {
 
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
   ];
 
