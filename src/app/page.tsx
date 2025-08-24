@@ -259,7 +259,7 @@ export default function Home() {
         toast({
             variant: "destructive",
             title: "No table selected",
-            description: "Please select a table before adding custom items.",
+            description: "Please select a table before adding items.",
         });
         return;
     }
@@ -486,5 +486,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
