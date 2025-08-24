@@ -25,12 +25,13 @@ const fromSupabase = (order: any): Order => {
         payment_status: order.payment_status,
         order_type: order.order_type,
         table_number: order.table_number,
-        status: order.status, // Correctly map the status column
+        status: order.status,
     }
 }
 
 const toSupabase = (order: Partial<Order>) => {
     const payload: {[key: string]: any} = {};
+
     if (order.status) payload.status = order.status;
     if (order.items) payload.items = order.items;
     if (order.subtotal !== undefined) payload.sub_total = order.subtotal;
@@ -39,8 +40,8 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
     
-    // Only include table_number if it has a value.
-    if (order.table_number) {
+    // Only include table_number if it has a value for dine-in.
+    if (order.order_type === 'dine-in' && order.table_number) {
         payload.table_number = order.table_number;
     }
 

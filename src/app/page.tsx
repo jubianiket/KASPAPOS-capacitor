@@ -51,9 +51,6 @@ export default function Home() {
         const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
         setActiveOrder(existingOrder || null);
     } else if (currentOrderType === 'delivery') {
-        // Since delivery orders aren't tied to a table, we need a better way to manage them.
-        // For simplicity, we find the first active delivery order.
-        // A real-world app might have a more sophisticated way to handle multiple delivery orders.
         const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
         setActiveOrder(deliveryOrder || null);
     } else {
@@ -81,15 +78,12 @@ export default function Home() {
       
       const oldOrder = { ...orderToUpdate };
       
-      // Optimistic update
       const updatedOrder = { ...orderToUpdate, items: newItems };
       setActiveOrder(updatedOrder);
       setActiveOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
       
-      // DB update
       const result = await updateOrder(orderId, { items: newItems });
       if (!result) {
-          // Revert on failure
           setActiveOrder(oldOrder);
           setActiveOrders(prev => prev.map(o => o.id === orderId ? oldOrder : o));
           toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order.' });
@@ -123,12 +117,11 @@ export default function Home() {
       }
       await updateOrderItems(activeOrder.id, newItems);
     } else {
-      // Create a new order
       const newOrderData: Omit<Order, 'id' | 'created_at'> = {
           items: [{ ...item, quantity: 1, rate: item.rate }],
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
-          table_number: tableNumber, // Pass the table number for dine-in
+          table_number: tableNumber,
           status: 'received',
       };
       const newOrder = await createOrder(newOrderData);
@@ -162,24 +155,22 @@ export default function Home() {
   const clearOrder = async () => {
     if(!activeOrder) return;
 
-    // A confirmed order should be emptied, not deleted.
-    if(activeOrder.status !== 'completed' && activeOrder.items.length > 0) {
-        await updateOrderItems(activeOrder.id, []);
-        return;
+    if(activeOrder.items.length === 0) {
+      const success = await deleteOrder(activeOrder.id);
+      if (success) {
+          const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
+          setActiveOrders(newActiveOrders);
+          setActiveOrder(null);
+          if(activeOrder.order_type === 'dine-in') {
+            setTableNumber(null);
+          }
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear order.' });
+      }
+      return;
     }
 
-    // No items in order, safe to delete
-    const success = await deleteOrder(activeOrder.id);
-    if (success) {
-        const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
-        setActiveOrders(newActiveOrders);
-        setActiveOrder(null);
-        if(activeOrder.order_type === 'dine-in') {
-          setTableNumber(null);
-        }
-    } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear order.' });
-    }
+    await updateOrderItems(activeOrder.id, []);
   };
 
   const completeOrder = async (completedOrder: Order) => {
@@ -192,11 +183,9 @@ export default function Home() {
     });
     
     if (updatedOrder) {
-        // Remove from active orders
         setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
         setActiveOrder(null);
         
-        // Reset the UI based on order type
         if(completedOrder.order_type === 'dine-in') {
             setTableNumber(null);
         }
