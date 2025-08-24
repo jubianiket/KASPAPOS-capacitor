@@ -46,16 +46,16 @@ export default function Home() {
 
   useEffect(() => {
     const manageOrder = async () => {
-      if (orderType === 'Dine In') {
+      const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
+      
+      if (currentOrderType === 'dine-in') {
           if (tableNumber) {
               const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
               if (existingOrder) {
                   setActiveOrder(existingOrder);
               } else {
-                  // Look for a pending order for this table
                   let pendingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status === 'pending');
                   if (!pendingOrder) {
-                      // Start a new pending order for this table
                       const newOrderData: Omit<Order, 'id' | 'created_at'> = {
                           items: [],
                           subtotal: 0,
@@ -77,8 +77,7 @@ export default function Home() {
           } else {
                setActiveOrder(null);
           }
-      } else if (orderType === 'Delivery') {
-          // Find if there's a pending delivery order.
+      } else if (currentOrderType === 'delivery') {
           let pendingDeliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status === 'pending');
           if (!pendingDeliveryOrder) {
               const newOrderData: Omit<Order, 'id' | 'created_at'> = {

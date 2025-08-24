@@ -11,6 +11,35 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const fromSupabase = (order: any): Order => {
+    if (!order) return order;
+    return {
+        ...order,
+        created_at: order.date,
+        subtotal: order.sub_total ?? 0,
+        total: order.total ?? 0,
+        tax: order.gst ?? 0,
+        discount: order.discount ?? 0,
+    }
+}
+
+const toSupabase = (order: Partial<Order>) => {
+    const payload: {[key: string]: any} = {};
+    if (order.status) payload.status = order.status;
+    if (order.items) payload.items = order.items;
+    if (order.subtotal !== undefined) payload.sub_total = order.subtotal;
+    if (order.tax !== undefined) payload.gst = order.tax;
+    if (order.total !== undefined) payload.total = order.total;
+    if (order.discount !== undefined) payload.discount = order.discount;
+    if (order.order_type) payload.order_type = order.order_type;
+    if (order.table_number) payload.table_number = order.table_number;
+    if (order.payment_method) {
+      payload.payment_status = 'paid';
+      payload.payment_method = order.payment_method;
+    }
+    return payload;
+}
+
 export const getMenuItems = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase.from('menu_items').select('*');
     if (error) {
@@ -46,7 +75,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
         console.error("Error fetching active orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total ?? 0, total: o.total ?? 0, tax: o.gst ?? 0, discount: 0 })) as Order[];
+    return (data as any[]).map(fromSupabase);
 };
 
 export const getCompletedOrders = async (): Promise<Order[]> => {
@@ -60,22 +89,11 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         console.error("Error fetching completed orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total ?? 0, total: o.total ?? 0, tax: o.gst ?? 0, discount: 0 })) as Order[];
+    return (data as any[]).map(fromSupabase);
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
-    const payload: { [key: string]: any } = {
-        items: order.items,
-        sub_total: order.subtotal,
-        total: order.total,
-        gst: order.tax,
-        order_type: order.order_type,
-        status: order.status
-    };
-
-    if (order.table_number) {
-        payload.table_number = order.table_number;
-    }
+    const payload = toSupabase(order);
 
     const { data, error } = await supabase
         .from('orders')
@@ -87,23 +105,12 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Prom
         console.error("Error creating order:", error);
         return null;
     }
-    const newOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total ?? 0, total: data.total ?? 0, tax: data.gst ?? 0, discount: 0 } as Order;
-    return newOrder;
+    return fromSupabase(data);
 }
 
 
 export const updateOrder = async (orderId: number, updates: Partial<Order>): Promise<Order | null> => {
-    const updatePayload: {[key: string]: any} = {};
-    if (updates.status) updatePayload.status = updates.status;
-    if (updates.items) updatePayload.items = updates.items;
-    if (updates.subtotal !== undefined) updatePayload.sub_total = updates.subtotal;
-    if (updates.tax !== undefined) updatePayload.gst = updates.tax;
-    if (updates.total !== undefined) updatePayload.total = updates.total;
-    if (updates.payment_method) {
-      updatePayload.payment_status = 'paid';
-      updatePayload.payment_method = updates.payment_method;
-    }
-
+    const updatePayload = toSupabase(updates);
 
     const { data, error } = await supabase
         .from('orders')
@@ -116,8 +123,7 @@ export const updateOrder = async (orderId: number, updates: Partial<Order>): Pro
         console.error("Error updating order:", error);
         return null;
     }
-    const updatedOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total ?? 0, total: data.total ?? 0, tax: data.gst ?? 0, discount: 0 } as Order;
-    return updatedOrder;
+    return fromSupabase(data);
 }
 
 export const deleteOrder = async (orderId: number): Promise<boolean> => {
