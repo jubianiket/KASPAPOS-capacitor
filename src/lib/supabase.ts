@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Order, MenuItem, KitchenOrder } from '@/types';
+import type { Order, MenuItem, KitchenOrder, OrderItem } from '@/types';
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -10,6 +10,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const TAX_RATE = 0.05; // 5%
 
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
@@ -30,17 +32,22 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
+    // Recalculate totals to ensure data integrity
+    const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
+    const tax = subtotal * TAX_RATE;
+    const total = subtotal + tax - (order.discount ?? 0);
+
     const payload: { [key: string]: any } = {
         items: order.items,
-        sub_total: order.subtotal,
-        gst: order.tax,
-        total: order.total,
-        discount: order.discount,
+        sub_total: subtotal,
+        gst: tax,
+        total: total,
+        discount: order.discount ?? 0,
         order_type: order.order_type,
         table_number: order.table_number,
-        date: order.created_at,
+        date: order.created_at || new Date().toISOString(),
         payment_method: order.payment_method,
-        payment_status: order.payment_status ?? 'unpaid', // Ensure payment_status is always set
+        payment_status: order.payment_status ?? 'unpaid',
     };
 
     // Only include the ID if it's a real, positive number for upsert.
@@ -49,10 +56,10 @@ const toSupabase = (order: Order) => {
     }
 
     // The only valid statuses for the 'orders' table are 'received' and 'completed'.
+    // Any other state (including client-side 'pending') should be 'received' in the database.
     if (order.status === 'completed') {
         payload.status = 'completed';
     } else {
-        // Any other state (including client-side 'pending') should be 'received' in the database.
         payload.status = 'received';
     }
 
