@@ -23,7 +23,6 @@ const settingsSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   tax_enabled: z.boolean().default(true),
-  tax_rate: z.coerce.number().min(0).optional(),
   tax_id: z.string().optional(),
   dark_mode: z.boolean().default(false),
   theme_color: z.string().optional(),
@@ -55,7 +54,6 @@ export default function SettingsPage() {
       address: '',
       phone: '',
       tax_enabled: true,
-      tax_rate: 0,
       tax_id: '',
       dark_mode: false,
       theme_color: '',
@@ -93,7 +91,6 @@ export default function SettingsPage() {
     const settingsToSave: RestaurantSettings = {
       ...(settings || { id: 1 }), // Always use id: 1
       ...data,
-      tax_rate: data.tax_enabled ? data.tax_rate : 0,
     };
     
     const updated = await updateSettings(settingsToSave);
@@ -215,16 +212,6 @@ export default function SettingsPage() {
                                 <div className="space-y-2">
                                 <Label htmlFor="tax_id">Tax ID (e.g., GSTIN)</Label>
                                 <Input id="tax_id" {...field} value={field.value || ''} />
-                                </div>
-                            )}
-                            />
-                            <Controller
-                            name="tax_rate"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
-                                <Input id="tax_rate" type="number" step="0.01" {...field} value={field.value || ''} />
                                 </div>
                             )}
                             />

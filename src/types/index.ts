@@ -57,7 +57,6 @@ export interface RestaurantSettings {
     address?: string | null;
     phone?: string | null;
     tax_enabled?: boolean;
-    tax_rate?: number;
     tax_id?: string | null;
     dark_mode?: boolean;
     theme_color?: string | null;

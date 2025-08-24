@@ -70,12 +70,6 @@ export default function Bill({
                 taxBreakdown.push({ name: `VAT (${settings.vat}%)`, amount: taxAmount });
             }
         }
-        // Fallback to default tax if no specific taxes apply but tax is enabled
-        if (taxBreakdown.length === 0 && settings.tax_rate) {
-            const taxAmount = subtotal * (settings.tax_rate / 100);
-            tax += taxAmount;
-            taxBreakdown.push({ name: `Tax (${settings.tax_rate}%)`, amount: taxAmount});
-        }
     }
 
     const total = subtotal + tax;
