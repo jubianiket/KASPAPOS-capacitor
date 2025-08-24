@@ -56,8 +56,8 @@ const toSupabase = (order: Partial<Order>) => {
         payload.payment_status = order.payment_status;
     }
 
-    // Ensure status is always set for new orders
-    if (!payload.id) {
+    // Ensure status is always valid for new orders
+    if (!payload.id && !payload.status) {
         payload.status = 'received';
     }
 
