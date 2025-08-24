@@ -116,13 +116,11 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 
     const isNewOrder = order.id <= 0;
-    const payload = toSupabase(order);
-    
-    console.log(isNewOrder ? "Attempting to insert order:" : `Attempting to update order ${order.id}:`, payload);
     
     if (isNewOrder) {
-        const { id, ...insertPayload } = payload;
+        const { id, ...insertPayload } = toSupabase(order);
         
+        console.log("Attempting to insert order:", insertPayload);
         const { data, error } = await supabase
             .from('orders')
             .insert(insertPayload)
@@ -135,7 +133,9 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        const { id, ...updatePayload } = payload;
+        const { id, ...updatePayload } = toSupabase(order);
+
+        console.log(`Attempting to update order ${order.id}:`, updatePayload);
         const { data, error } = await supabase
             .from('orders')
             .update(updatePayload)
@@ -212,7 +212,7 @@ export const signIn = async (login: string, password: string): Promise<User | nu
     const { data, error } = await supabase
         .from('users')
         .select('*')
-        .or(`username.eq.${login},email.eq.${login}`)
+        .or(`username.ilike.${login},email.ilike.${login}`)
         .eq('password', password) // IMPORTANT: Storing plain text passwords is not secure. This is for demonstration only.
         .single();
 
