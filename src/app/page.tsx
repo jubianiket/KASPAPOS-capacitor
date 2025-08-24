@@ -271,10 +271,6 @@ export default function Home() {
       portion: 'Custom',
     };
     addToOrder(customItem, 'Custom');
-    toast({
-      title: 'Custom Item Added',
-      description: `${itemName} was added to the order.`,
-    });
   };
 
 
