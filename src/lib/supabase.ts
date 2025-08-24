@@ -39,7 +39,6 @@ const toSupabase = (order: Order) => {
     
     // Determine the status to save to the database.
     // 'pending' is a client-side only status.
-    // If the order is not 'completed', it should be 'received' in the DB.
     const dbStatus = order.status === 'completed' ? 'completed' : 'received';
 
     const payload: { [key: string]: any } = {
