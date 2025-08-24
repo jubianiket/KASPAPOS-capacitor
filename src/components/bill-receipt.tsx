@@ -13,14 +13,19 @@ interface BillReceiptProps {
 export function BillReceipt({ order }: BillReceiptProps) {
 
     const formatDateTime = (dateString: string) => {
+        if (typeof window === 'undefined') {
+            // Return a placeholder or the original string during SSR
+            return new Date(dateString).toISOString(); 
+        }
         const date = new Date(dateString);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
 
     const generateWhatsAppMessage = () => {
+        const formattedDate = formatDateTime(order.created_at);
         let message = `*KASPA POS Bill*\n\n`;
         message += `Order ID: ${order.id}\n`;
-        message += `Date: ${formatDateTime(order.created_at)}\n`;
+        message += `Date: ${formattedDate}\n`;
         if (order.order_type === 'dine-in') {
             message += `Table: ${order.table_number}\n`;
         }
@@ -38,7 +43,7 @@ export function BillReceipt({ order }: BillReceiptProps) {
     }
 
     const handlePrint = () => {
-        const printableContent = document.getElementById('printable-receipt');
+        const printableContent = document.getElementById(`printable-receipt-${order.id}`);
         if (printableContent) {
             const printWindow = window.open('', '', 'height=600,width=800');
             printWindow?.document.write('<html><head><title>Print Bill</title>');
@@ -71,7 +76,7 @@ export function BillReceipt({ order }: BillReceiptProps) {
 
     return (
         <div className="space-y-4">
-            <div id="printable-receipt" className="text-sm">
+            <div id={`printable-receipt-${order.id}`} className="text-sm">
                 <div className="text-center mb-4">
                     <h3 className="text-lg font-bold">KASPA POS</h3>
                     <p className="text-xs text-muted-foreground">Receipt</p>
