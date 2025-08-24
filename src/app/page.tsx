@@ -9,16 +9,22 @@ import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeOrders, setActiveOrders] = useLocalStorage<Order[]>('activeOrders', []);
   const [completedOrders, setCompletedOrders] = useLocalStorage<Order[]>('orders', []);
+  const [isClient, setIsClient] = useState(false);
   
   const { toast } = useToast();
   
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery'>('Dine In');
   const [tableNumber, setTableNumber] = useState<string>('');
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const occupiedTables = activeOrders
     .filter(o => o.orderType === 'Dine In' && o.tableNumber && o.status === 'confirmed')
@@ -49,7 +55,7 @@ export default function Home() {
     } else {
       setActiveOrder(null);
     }
-  }, [tableNumber, orderType]);
+  }, [tableNumber, orderType, activeOrders]);
 
   const updateOrderItems = (newItems: OrderItem[]) => {
     if (!activeOrder) return;
@@ -182,11 +188,22 @@ export default function Home() {
             </div>
             {orderType === 'Dine In' && (
               <div className="mb-6">
-                <TableSelection 
-                  selectedTable={tableNumber} 
-                  onSelectTable={setTableNumber}
-                  occupiedTables={occupiedTables}
-                />
+                {!isClient ? (
+                  <div>
+                      <Skeleton className="h-8 w-48 mb-3" />
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                        {Array.from({ length: 12 }).map((_, i) => (
+                          <Skeleton key={i} className="aspect-square" />
+                        ))}
+                      </div>
+                  </div>
+                ) : (
+                  <TableSelection 
+                    selectedTable={tableNumber} 
+                    onSelectTable={setTableNumber}
+                    occupiedTables={occupiedTables}
+                  />
+                )}
               </div>
             )}
           </div>
