@@ -1,26 +1,20 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { MenuItem } from "@/types";
+import { useState, useEffect, useMemo } from "react";
+import { MenuItem, GroupedMenuItem } from "@/types";
 import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { MoreVertical, PlusCircle, Edit, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -35,7 +29,7 @@ import {
 import { Skeleton } from "./ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import MenuItemFormDialog from "./menu-item-form-dialog";
-
+import { Separator } from "./ui/separator";
 
 export default function MenuManagement() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -55,11 +49,42 @@ export default function MenuManagement() {
   useEffect(() => {
     loadItems();
   }, []);
+  
+  const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
+    const itemMap = new Map<string, GroupedMenuItem>();
+    menuItems.forEach(item => {
+      let group = itemMap.get(item.name);
+      if (!group) {
+        group = {
+          name: item.name,
+          category: item.category,
+          baseRate: item.rate, // Not really used here, but required by type
+          portions: [],
+        };
+        itemMap.set(item.name, group);
+      }
+      group.portions.push(item);
+    });
+    return Array.from(itemMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [menuItems]);
 
   const handleOpenForm = (item: MenuItem | null = null) => {
     setSelectedItem(item);
     setIsFormOpen(true);
   };
+  
+  const handleAddNewPortion = (existingItem: GroupedMenuItem) => {
+    const newItemTemplate: Partial<MenuItem> = {
+        name: existingItem.name,
+        category: existingItem.category,
+        rate: 0,
+        portion: "",
+        available: true,
+        is_active: true,
+    }
+    setSelectedItem(newItemTemplate as MenuItem);
+    setIsFormOpen(true);
+  }
 
   const handleOpenDeleteAlert = (item: MenuItem) => {
     setSelectedItem(item);
@@ -68,14 +93,15 @@ export default function MenuManagement() {
 
   const handleFormSubmit = async (values: Partial<MenuItem>) => {
     try {
-      if (selectedItem) { // Editing existing item
+      if (selectedItem && selectedItem.id) { // Editing existing item
         await updateMenuItem(selectedItem.id, values);
         toast({ title: "Success", description: "Menu item updated." });
-      } else { // Adding new item
+      } else { // Adding new item or portion
         await addMenuItem(values);
         toast({ title: "Success", description: "New menu item added." });
       }
       setIsFormOpen(false);
+      setSelectedItem(null);
       loadItems();
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not save the item." });
@@ -88,6 +114,7 @@ export default function MenuManagement() {
       await deleteMenuItem(selectedItem.id);
       toast({ title: "Success", description: "Menu item deleted." });
       setIsDeleteAlertOpen(false);
+      setSelectedItem(null);
       loadItems();
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not delete the item." });
@@ -100,7 +127,9 @@ export default function MenuManagement() {
         <div className="flex justify-end">
            <Skeleton className="h-10 w-32" />
         </div>
-        <Skeleton className="h-96 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+        </div>
       </div>
     );
   }
@@ -113,74 +142,63 @@ export default function MenuManagement() {
           Add New Item
         </Button>
       </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Portion</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {menuItems.length > 0 ? (
-              menuItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>{item.portion || "N/A"}</TableCell>
-                  <TableCell>Rs.{item.rate.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_active ? "default" : "secondary"}>
-                      {item.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                     <Badge variant={item.available ? "default" : "secondary"} className="ml-2 bg-green-200 text-green-800">
-                      {item.available ? "Available" : "Unavailable"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
+      
+      {groupedMenuItems.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {groupedMenuItems.map(group => (
+                <Card key={group.name} className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle>{group.name}</CardTitle>
+                        <CardDescription>{group.category}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                        <Separator />
+                        {group.portions.sort((a,b) => (a.portion || "").localeCompare(b.portion || "")).map(item => (
+                            <div key={item.id} className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold">{item.portion || 'Regular'}</p>
+                                    <p className="text-sm text-muted-foreground">Rs.{item.rate.toFixed(2)}</p>
+                                    <div>
+                                        <Badge variant={item.is_active ? "default" : "secondary"} className="text-xs">
+                                            {item.is_active ? "Active" : "Inactive"}
+                                        </Badge>
+                                        <Badge variant={item.available ? "default" : "secondary"} className="ml-2 bg-green-200 text-green-800 text-xs">
+                                            {item.available ? "Available" : "Unavailable"}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenForm(item)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleOpenDeleteAlert(item)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                    <CardFooter>
+                        <Button variant="outline" className="w-full" onClick={() => handleAddNewPortion(group)}>
+                           <PlusCircle className="mr-2 h-4 w-4" /> Add Portion
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleOpenForm(item)}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleOpenDeleteAlert(item)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  No menu items found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
+      ) : (
+         <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+            <h3 className="mt-4 text-lg font-medium">No Menu Items Found</h3>
+            <p className="mt-1 text-sm">Click "Add New Item" to get started.</p>
+        </div>
+      )}
 
       <MenuItemFormDialog
         isOpen={isFormOpen}
-        onOpenChange={setIsFormOpen}
+        onOpenChange={(open) => {
+            if(!open) setSelectedItem(null);
+            setIsFormOpen(open);
+        }}
         onSubmit={handleFormSubmit}
         item={selectedItem}
       />
@@ -191,11 +209,11 @@ export default function MenuManagement() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the menu item
-              "{selectedItem?.name}".
+              "{selectedItem?.name} - {selectedItem?.portion}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSelectedItem(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
