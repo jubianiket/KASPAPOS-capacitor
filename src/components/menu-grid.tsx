@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { MenuItem } from '@/types';
 import MenuItemCard from './menu-item-card';
-import { getMenuItems } from '@/lib/supabase';
+import { getMenuItems, updateMenuItem } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { useToast } from '@/hooks/use-toast';
 
 interface MenuGridProps {
   onAddToOrder: (item: MenuItem) => void;
@@ -17,20 +18,40 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const { toast } = useToast();
+
+  const fetchMenuItems = useCallback(async () => {
+    setIsLoading(true);
+    const items = await getMenuItems();
+    setMenuItems(items);
+    
+    const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
+    setCategories(uniqueCategories);
+
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    const fetchMenuItems = async () => {
-      setIsLoading(true);
-      const items = await getMenuItems();
-      setMenuItems(items);
-      
-      const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
-      setCategories(uniqueCategories);
-
-      setIsLoading(false);
-    };
     fetchMenuItems();
-  }, []);
+  }, [fetchMenuItems]);
+
+  const handleUpdateItem = async (updatedItem: MenuItem) => {
+    const originalRate = menuItems.find(item => item.id === updatedItem.id)?.rate;
+
+    // Optimistic update
+    setMenuItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
+
+    const result = await updateMenuItem(updatedItem.id, { rate: updatedItem.rate });
+    if (!result) {
+      toast({
+        variant: 'destructive',
+        title: 'Error updating price',
+        description: 'Could not save the new price. Please try again.',
+      });
+      // Revert on failure
+      setMenuItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? { ...item, rate: originalRate! } : item));
+    }
+  };
 
   const handleCategoryChange = (value: string) => {
     if (value) {
@@ -80,7 +101,12 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredMenuItems.map((item) => (
-                    <MenuItemCard key={item.id} item={item} onAddToOrder={onAddToOrder} />
+                    <MenuItemCard 
+                      key={item.id} 
+                      item={item} 
+                      onAddToOrder={onAddToOrder} 
+                      onUpdateItem={handleUpdateItem}
+                    />
                 ))}
             </div>
         )}

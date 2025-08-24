@@ -19,6 +19,21 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
     return data as MenuItem[];
 }
 
+export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
+    const { data, error } = await supabase
+        .from('menu_items')
+        .update(updates)
+        .eq('id', itemId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error updating menu item:", error);
+        return null;
+    }
+    return data as MenuItem;
+}
+
 export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
