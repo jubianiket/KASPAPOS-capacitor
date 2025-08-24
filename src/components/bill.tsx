@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -56,14 +57,14 @@ export default function Bill({
     }
   }
 
-  const handleCompleteOrder = (paymentMethod: NonNullable<Order['paymentMethod']>) => {
+  const handleCompleteOrder = (paymentMethod: NonNullable<Order['payment_method']>) => {
     if (order) {
       const orderToComplete: Order = {
         ...order,
         subtotal,
         tax,
         total,
-        paymentMethod,
+        payment_method: paymentMethod,
       };
       onCompleteOrder(orderToComplete);
     }
@@ -71,8 +72,8 @@ export default function Bill({
 
   const getOrderTitle = () => {
     if (!order) return 'No Order Selected';
-    if (order.orderType === 'Delivery') return 'Delivery Order';
-    if (order.tableNumber) return `Order for Table ${order.tableNumber}`;
+    if (order.order_type === 'Delivery') return 'Delivery Order';
+    if (order.table_number) return `Order for Table ${order.table_number}`;
     return 'Select a Table';
   }
 
@@ -90,12 +91,12 @@ export default function Bill({
         </div>
         {order && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {order.orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
-                <span>{order.orderType}</span>
-                {order.orderType === 'Dine In' && order.tableNumber && (
+                {order.order_type === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                <span>{order.order_type}</span>
+                {order.order_type === 'Dine In' && order.table_number && (
                     <>
                     <Separator orientation="vertical" className="h-4"/>
-                    <span>Table: <span className="font-semibold text-foreground">{order.tableNumber}</span></span>
+                    <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                     </>
                 )}
                  {order.status === 'confirmed' && <Badge variant="secondary">Confirmed</Badge>}

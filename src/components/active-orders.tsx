@@ -16,10 +16,10 @@ interface ActiveOrdersProps {
 export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: ActiveOrdersProps) {
 
   const getOrderTitle = (order: Order) => {
-    if (order.orderType === 'Delivery') {
-      return `Delivery #${order.id.slice(-4)}`;
+    if (order.order_type === 'Delivery') {
+      return `Delivery #${order.id.slice(0, 4)}`;
     }
-    return `Table ${order.tableNumber}`;
+    return `Table ${order.table_number}`;
   }
 
   return (
@@ -45,7 +45,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
               <CardContent className="p-3 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between mb-2">
                    <p className="font-bold">{getOrderTitle(order)}</p>
-                   {order.orderType === 'Dine In' 
+                   {order.order_type === 'Dine In' 
                         ? <Utensils className="w-4 h-4 text-muted-foreground" /> 
                         : <Bike className="w-4 h-4 text-muted-foreground" />
                     }

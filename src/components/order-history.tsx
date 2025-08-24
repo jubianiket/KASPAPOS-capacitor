@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useEffect, useState } from 'react';
 import type { Order } from '@/types';
 import {
   Accordion,
@@ -11,13 +12,35 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Ticket, Calendar, Clock, Utensils, Bike } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { getCompletedOrders } from '@/lib/supabase';
+import { Skeleton } from './ui/skeleton';
 
 export default function OrderHistory() {
-  const [orders] = useLocalStorage<Order[]>('orders', []);
-  
-  const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (sortedOrders.length === 0) {
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      const completedOrders = await getCompletedOrders();
+      setOrders(completedOrders);
+      setIsLoading(false);
+    };
+    fetchOrders();
+  }, []);
+
+  if (isLoading) {
+      return (
+          <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+          </div>
+      )
+  }
+
+  if (orders.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
         <Ticket className="mx-auto h-12 w-12" />
@@ -29,32 +52,32 @@ export default function OrderHistory() {
 
   return (
     <Accordion type="single" collapsible className="w-full">
-      {sortedOrders.map((order) => (
+      {orders.map((order) => (
         <AccordionItem key={order.id} value={order.id}>
           <AccordionTrigger>
             <div className="flex justify-between items-center w-full pr-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{new Date(order.timestamp).toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(order.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-muted-foreground">{new Date(order.timestamp).toLocaleTimeString()}</span>
+                  <span className="font-medium text-muted-foreground">{new Date(order.created_at).toLocaleTimeString()}</span>
                 </div>
                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {order.orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
-                    <span>{order.orderType}</span>
-                    {order.orderType === 'Dine In' && order.tableNumber && (
+                    {order.order_type === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                    <span>{order.order_type}</span>
+                    {order.order_type === 'Dine In' && order.table_number && (
                         <>
                         <Separator orientation="vertical" className="h-4"/>
-                        <span>Table: <span className="font-semibold text-foreground">{order.tableNumber}</span></span>
+                        <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                         </>
                     )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                 <Badge variant={order.paymentMethod === 'Card' ? 'default' : 'secondary'} className="capitalize">{order.paymentMethod}</Badge>
+                 <Badge variant={order.payment_method === 'Card' ? 'default' : 'secondary'} className="capitalize">{order.payment_method}</Badge>
                  <span className="font-bold text-lg text-primary">${order.total.toFixed(2)}</span>
               </div>
             </div>
