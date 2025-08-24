@@ -48,6 +48,11 @@ const toSupabase = (order: Order) => {
         status: order.status,
     };
     
+    // Don't include the ID for update payloads
+    if (order.id > 0) {
+        payload.id = order.id;
+    }
+
     return payload;
 }
 
@@ -113,10 +118,10 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     const isNewOrder = order.id <= 0;
     const payload = toSupabase(order);
     
+    console.log(isNewOrder ? "Attempting to insert order:" : `Attempting to update order ${order.id}:`, payload);
+    
     if (isNewOrder) {
-        // Remove temporary client-side ID before insertion
         const { id, ...insertPayload } = payload;
-        console.log("Attempting to insert order:", insertPayload);
         
         const { data, error } = await supabase
             .from('orders')
@@ -130,8 +135,6 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        // Update existing order
-        console.log(`Attempting to update order ${order.id}:`, payload);
         const { data, error } = await supabase
             .from('orders')
             .update(payload)

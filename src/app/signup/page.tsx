@@ -18,7 +18,6 @@ export default function SignupPage() {
         password: '',
         name: '',
         phone: '',
-        email: '',
     });
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -33,7 +32,7 @@ export default function SignupPage() {
         setIsLoading(true);
 
         const phoneAsNumber = Number(formData.phone);
-        if (isNaN(phoneAsNumber)) {
+        if (isNaN(phoneAsNumber) || formData.phone.trim() === '') {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Phone Number',
@@ -78,10 +77,6 @@ export default function SignupPage() {
                         <div className="space-y-2">
                             <Label htmlFor="name">Full Name</Label>
                             <Input id="name" value={formData.name} onChange={handleChange} required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={formData.email} onChange={handleChange} required />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="phone">Phone</Label>
