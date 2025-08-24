@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order } from '@/types';
@@ -11,57 +11,142 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 
 export default function Home() {
-  const [order, setOrder] = useState<OrderItem[]>([]);
-  const [orders, setOrders] = useLocalStorage<Order[]>('orders', []);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [activeOrders, setActiveOrders] = useLocalStorage<Order[]>('activeOrders', []);
+  const [completedOrders, setCompletedOrders] = useLocalStorage<Order[]>('orders', []);
+  
   const { toast } = useToast();
+  
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery'>('Dine In');
   const [tableNumber, setTableNumber] = useState<string>('');
 
-  const addToOrder = (item: MenuItem) => {
-    setOrder((prevOrder) => {
-      const existingItem = prevOrder.find((orderItem) => orderItem.id === item.id);
-      if (existingItem) {
-        return prevOrder.map((orderItem) =>
-          orderItem.id === item.id
-            ? { ...orderItem, quantity: orderItem.quantity + 1 }
-            : orderItem
-        );
+  const occupiedTables = activeOrders
+    .filter(o => o.orderType === 'Dine In' && o.tableNumber && o.status === 'confirmed')
+    .map(o => o.tableNumber!);
+
+  useEffect(() => {
+    // When tableNumber changes, find if there's an active order for it
+    if (orderType === 'Dine In' && tableNumber) {
+      const existingOrder = activeOrders.find(o => o.tableNumber === tableNumber && o.status === 'confirmed');
+      if (existingOrder) {
+        setActiveOrder(existingOrder);
+      } else {
+        // Start a new pending order for this table
+        const newPendingOrder: Order = {
+          id: `pending-${tableNumber}-${Date.now()}`,
+          items: [],
+          subtotal: 0,
+          tax: 0,
+          discount: 0,
+          total: 0,
+          timestamp: new Date().toISOString(),
+          orderType: 'Dine In',
+          tableNumber: tableNumber,
+          status: 'pending',
+        };
+        setActiveOrder(newPendingOrder);
       }
-      return [...prevOrder, { ...item, quantity: 1 }];
-    });
+    } else {
+      setActiveOrder(null);
+    }
+  }, [tableNumber, orderType]);
+
+  const updateOrderItems = (newItems: OrderItem[]) => {
+    if (!activeOrder) return;
+
+    const newActiveOrder = { ...activeOrder, items: newItems };
+    setActiveOrder(newActiveOrder);
+    
+    // Update in activeOrders list if it was a confirmed order
+    if (newActiveOrder.status === 'confirmed') {
+        const updatedActiveOrders = activeOrders.map(o => o.id === newActiveOrder.id ? newActiveOrder : o);
+        setActiveOrders(updatedActiveOrders);
+    }
+  };
+
+  const addToOrder = (item: MenuItem) => {
+    if (!activeOrder) {
+        toast({
+            variant: "destructive",
+            title: "No order selected",
+            description: "Please select a table for Dine-In orders.",
+        });
+        return;
+    }
+
+    const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
+    let newItems: OrderItem[];
+
+    if (existingItem) {
+      newItems = activeOrder.items.map((orderItem) =>
+        orderItem.id === item.id
+          ? { ...orderItem, quantity: orderItem.quantity + 1 }
+          : orderItem
+      );
+    } else {
+      newItems = [...activeOrder.items, { ...item, quantity: 1 }];
+    }
+    updateOrderItems(newItems);
   };
 
   const updateQuantity = (itemId: string, quantity: number) => {
+     if (!activeOrder) return;
     if (quantity <= 0) {
       removeFromOrder(itemId);
     } else {
-      setOrder((prevOrder) =>
-        prevOrder.map((item) =>
+       const newItems = activeOrder.items.map((item) =>
           item.id === itemId ? { ...item, quantity } : item
-        )
-      );
+        );
+       updateOrderItems(newItems);
     }
   };
 
   const removeFromOrder = (itemId: string) => {
-    setOrder((prevOrder) => prevOrder.filter((item) => item.id !== itemId));
+    if (!activeOrder) return;
+    const newItems = activeOrder.items.filter((item) => item.id !== itemId);
+    updateOrderItems(newItems);
   };
 
   const clearOrder = () => {
-    setOrder([]);
-    setTableNumber('');
+    if(!activeOrder) return;
+    if(activeOrder.status === 'pending') {
+        setActiveOrder(null);
+        setTableNumber('');
+    } else {
+        // Confirmed order cannot be cleared, only items removed
+        updateOrderItems([]);
+    }
   };
 
-  const completeOrder = (completedOrder: Omit<Order, 'id' | 'timestamp' | 'orderType' | 'tableNumber'>) => {
-    const newOrder: Order = {
-      ...completedOrder,
-      id: new Date().toISOString(),
+  const confirmOrder = (confirmedOrder: Order) => {
+    const newConfirmedOrder: Order = {
+      ...confirmedOrder,
+      id: `confirmed-${confirmedOrder.tableNumber}-${Date.now()}`,
+      status: 'confirmed',
       timestamp: new Date().toISOString(),
-      orderType: orderType,
-      ...(orderType === 'Dine In' && { tableNumber: tableNumber }),
     };
-    setOrders([...orders, newOrder]);
-    clearOrder();
+    setActiveOrders([...activeOrders.filter(o => o.id !== confirmedOrder.id), newConfirmedOrder]);
+    setActiveOrder(newConfirmedOrder);
+    toast({
+      title: `Order for Table ${confirmedOrder.tableNumber} Confirmed`,
+      description: 'You can now add more items or proceed to payment.',
+    });
+  };
+
+  const completeOrder = (completedOrder: Order) => {
+    const newCompletedOrder: Order = {
+        ...completedOrder,
+        status: 'completed',
+        timestamp: new Date().toISOString()
+    };
+    
+    setCompletedOrders([...completedOrders, newCompletedOrder]);
+    
+    // Remove from active orders
+    setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
+    setActiveOrder(null);
+    setTableNumber('');
+
     toast({
       title: 'Payment Successful',
       description: 'The order has been completed and saved.',
@@ -81,7 +166,8 @@ export default function Home() {
                 onValueChange={(value: 'Dine In' | 'Delivery') => {
                   if(value) {
                     setOrderType(value);
-                    setTableNumber(''); // Reset table number when changing order type
+                    setTableNumber('');
+                    setActiveOrder(null);
                   }
                 }}
                 className="bg-background rounded-lg p-1 border"
@@ -89,14 +175,18 @@ export default function Home() {
                 <ToggleGroupItem value="Dine In" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   <Utensils /> Dine In
                 </ToggleGroupItem>
-                <ToggleGroupItem value="Delivery" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                <ToggleGroupItem value="Delivery" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground" disabled>
                   <Bike /> Delivery
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
             {orderType === 'Dine In' && (
               <div className="mb-6">
-                <TableSelection selectedTable={tableNumber} onSelectTable={setTableNumber} />
+                <TableSelection 
+                  selectedTable={tableNumber} 
+                  onSelectTable={setTableNumber}
+                  occupiedTables={occupiedTables}
+                />
               </div>
             )}
           </div>
@@ -104,14 +194,13 @@ export default function Home() {
         </div>
         <div className="mt-8 lg:mt-0">
           <Bill
-            orderItems={order}
+            order={activeOrder}
             onUpdateQuantity={updateQuantity}
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
+            onConfirmOrder={confirmOrder}
             onCompleteOrder={completeOrder}
             onAddToOrder={addToOrder}
-            orderType={orderType}
-            tableNumber={tableNumber}
           />
         </div>
       </div>

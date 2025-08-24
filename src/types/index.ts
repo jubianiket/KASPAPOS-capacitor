@@ -4,7 +4,6 @@ export interface MenuItem {
   description: string;
   price: number;
   category: string;
-  imageUrl: string;
 }
 
 export interface OrderItem extends MenuItem {
@@ -18,8 +17,9 @@ export interface Order {
   tax: number;
   discount: number;
   total: number;
-  paymentMethod: 'Cash' | 'Card' | 'Mobile';
+  paymentMethod?: 'Cash' | 'Card' | 'Mobile';
   timestamp: string;
   orderType: 'Dine In' | 'Delivery';
   tableNumber?: string;
+  status: 'pending' | 'confirmed' | 'completed';
 }

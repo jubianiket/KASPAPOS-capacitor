@@ -15,7 +15,6 @@ export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) 
     <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
-        <p className="text-sm text-muted-foreground">{item.description}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>

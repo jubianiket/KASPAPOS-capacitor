@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { MinusCircle, PlusCircle, Sparkles, Trash2, X, Bike, Utensils } from 'lucide-react';
 import type { OrderItem, MenuItem, Order } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,46 +14,59 @@ import { Badge } from './ui/badge';
 const TAX_RATE = 0.1; // 10%
 
 interface BillProps {
-  orderItems: OrderItem[];
+  order: Order | null;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearOrder: () => void;
-  onCompleteOrder: (completedOrder: Omit<Order, 'id' | 'timestamp' | 'orderType' | 'tableNumber'>) => void;
+  onConfirmOrder: (order: Order) => void;
+  onCompleteOrder: (order: Order) => void;
   onAddToOrder: (item: MenuItem) => void;
-  orderType: 'Dine In' | 'Delivery';
-  tableNumber?: string;
 }
 
 export default function Bill({
-  orderItems,
+  order,
   onUpdateQuantity,
   onRemoveItem,
   onClearOrder,
+  onConfirmOrder,
   onCompleteOrder,
   onAddToOrder,
-  orderType,
-  tableNumber,
 }: BillProps) {
-  const [discount, setDiscount] = useState(0); // For future implementation
+  
+  const orderItems = order?.items ?? [];
 
   const calculations = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax - discount;
+    const total = subtotal + tax - (order?.discount ?? 0);
     return { subtotal, tax, total };
-  }, [orderItems, discount]);
+  }, [orderItems, order?.discount]);
 
   const { subtotal, tax, total } = calculations;
 
-  const handleCompleteOrder = (paymentMethod: Order['paymentMethod']) => {
-    onCompleteOrder({
-      items: orderItems,
-      subtotal,
-      tax,
-      discount,
-      total,
-      paymentMethod,
-    });
+  const handleConfirmOrder = () => {
+    if(order) {
+        const orderToConfirm: Order = {
+            ...order,
+            subtotal,
+            tax,
+            total,
+        };
+        onConfirmOrder(orderToConfirm);
+    }
+  }
+
+  const handleCompleteOrder = (paymentMethod: NonNullable<Order['paymentMethod']>) => {
+    if (order) {
+      const orderToComplete: Order = {
+        ...order,
+        subtotal,
+        tax,
+        total,
+        paymentMethod,
+      };
+      onCompleteOrder(orderToComplete);
+    }
   };
 
   return (
@@ -63,26 +76,29 @@ export default function Bill({
             <CardTitle>Current Order</CardTitle>
             {orderItems.length > 0 && (
             <Button variant="ghost" size="icon" onClick={onClearOrder} className="text-muted-foreground hover:text-destructive">
-                <X className="h-5 w-5" />
+                <Trash2 className="h-5 w-5" />
                 <span className="sr-only">Clear Order</span>
             </Button>
             )}
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
-            <span>{orderType}</span>
-            {orderType === 'Dine In' && tableNumber && (
-                <>
-                <Separator orientation="vertical" className="h-4"/>
-                <span>Table: <span className="font-semibold text-foreground">{tableNumber}</span></span>
-                </>
-            )}
-        </div>
+        {order && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {order.orderType === 'Dine In' ? <Utensils className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
+                <span>{order.orderType}</span>
+                {order.orderType === 'Dine In' && order.tableNumber && (
+                    <>
+                    <Separator orientation="vertical" className="h-4"/>
+                    <span>Table: <span className="font-semibold text-foreground">{order.tableNumber}</span></span>
+                    </>
+                )}
+                 {order.status === 'confirmed' && <Badge variant="secondary">Confirmed</Badge>}
+            </div>
+        )}
       </CardHeader>
       <CardContent>
         {orderItems.length === 0 ? (
           <div className="text-center text-muted-foreground py-16">
-            <p>Your order is empty.</p>
+            <p>{order ? 'This order is empty.' : 'Select a table to start an order.'}</p>
             <p className="text-sm">Click on menu items to add them.</p>
           </div>
         ) : (
@@ -93,7 +109,6 @@ export default function Bill({
                   <div key={item.id} className="flex items-center gap-4">
                     <div className="flex-grow">
                       <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}>
@@ -103,6 +118,7 @@ export default function Bill({
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
                         <PlusCircle className="w-4 h-4" />
                       </Button>
+                        <p className="text-sm text-muted-foreground w-12 text-right">${(item.price * item.quantity).toFixed(2)}</p>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -121,10 +137,10 @@ export default function Bill({
                 <span>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
                 <span>${tax.toFixed(2)}</span>
               </div>
-              {discount > 0 && (
+              {(order?.discount ?? 0) > 0 && (
                 <div className="flex justify-between text-destructive">
                   <span>Discount</span>
-                  <span>-${discount.toFixed(2)}</span>
+                  <span>-${(order?.discount ?? 0).toFixed(2)}</span>
                 </div>
               )}
               <Separator className="my-2" />
@@ -143,8 +159,13 @@ export default function Bill({
               <Sparkles className="mr-2 h-4 w-4" /> AI Upsell Suggestions
             </Button>
            </UpsellSuggestionsDrawer>
+           {order?.status === 'pending' && (
+              <Button onClick={handleConfirmOrder} className="w-full">
+                Confirm Order
+              </Button>
+            )}
           <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder}>
-            <Button className="w-full text-lg py-6" disabled={orderType === 'Dine In' && !tableNumber}>
+             <Button className="w-full text-lg py-6" disabled={order?.status !== 'confirmed'}>
               Proceed to Payment
             </Button>
           </PaymentDialog>

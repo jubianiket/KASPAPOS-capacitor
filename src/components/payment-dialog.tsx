@@ -19,7 +19,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 interface PaymentDialogProps {
   children: React.ReactNode;
   total: number;
-  onCompleteOrder: (paymentMethod: Order['paymentMethod']) => void;
+  onCompleteOrder: (paymentMethod: NonNullable<Order['paymentMethod']>) => void;
 }
 
 export default function PaymentDialog({
@@ -27,7 +27,7 @@ export default function PaymentDialog({
   total,
   onCompleteOrder,
 }: PaymentDialogProps) {
-  const [paymentMethod, setPaymentMethod] = useState<Order['paymentMethod'] | ''>('');
+  const [paymentMethod, setPaymentMethod] = useState<NonNullable<Order['paymentMethod']> | ''>('');
   const [isOpen, setIsOpen] = useState(false);
   
   const handlePayment = () => {
@@ -56,7 +56,7 @@ export default function PaymentDialog({
               type="single"
               variant="outline"
               value={paymentMethod}
-              onValueChange={(value: Order['paymentMethod']) => {
+              onValueChange={(value: NonNullable<Order['paymentMethod']>) => {
                 if(value) setPaymentMethod(value)
               }}
             >
