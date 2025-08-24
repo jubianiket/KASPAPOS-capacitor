@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">kaspapos</string>
+    <string name="title_activity_main">kaspapos</string>
+    <string name="package_name">com.example.kaspapos</string>
+    <string name="custom_url_scheme">com.example.kaspapos</string>
+</resources>
