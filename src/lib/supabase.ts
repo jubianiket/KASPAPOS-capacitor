@@ -21,7 +21,6 @@ const fromSupabase = (order: any): Order => {
         items: Array.isArray(order.items) ? order.items : [],
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
-        discount: order.discount ?? 0,
         total: order.total ?? 0,
         payment_method: order.payment_method,
         payment_status: order.payment_status,
@@ -31,10 +30,10 @@ const fromSupabase = (order: any): Order => {
     }
 }
 
-const toSupabase = (order: Order, isNew: boolean) => {
+const toSupabase = (order: Order) => {
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax - (order.discount ?? 0);
+    const total = subtotal + tax;
     
     let dbStatus: 'received' | 'completed';
     if (order.status === 'completed' || order.payment_status === 'paid') {
@@ -49,17 +48,12 @@ const toSupabase = (order: Order, isNew: boolean) => {
         sub_total: subtotal,
         gst: tax,
         total: total,
-        discount: order.discount ?? 0,
         order_type: order.order_type,
         table_number: order.table_number,
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
         status: dbStatus,
     };
-
-    if (!isNew) {
-        payload.id = order.id;
-    }
     
     return payload;
 }
@@ -125,17 +119,18 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 
     const isNewOrder = order.id <= 0;
+    const payload = toSupabase(order);
 
     if (isNewOrder) {
         // Omitting the ID for new orders so Supabase can generate it.
         const { id, ...orderData } = order;
-        const payload = toSupabase({ ...orderData, id: 0 }, true); // Pass a placeholder ID
+        const insertPayload = toSupabase({ ...orderData, id: 0 }); // Pass a placeholder ID
         
-        console.log("Attempting to insert order:", payload);
+        console.log("Attempting to insert order:", insertPayload);
 
         const { data, error } = await supabase
             .from('orders')
-            .insert(payload)
+            .insert(insertPayload)
             .select()
             .single();
 
@@ -146,8 +141,6 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         return fromSupabase(data);
     } else {
         // Update existing order
-        const payload = toSupabase(order, false);
-
         console.log(`Attempting to update order ${order.id}:`, payload);
 
         const { data, error } = await supabase

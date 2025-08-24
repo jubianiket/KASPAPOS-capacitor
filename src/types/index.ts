@@ -19,7 +19,6 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   tax: number;
-  discount: number;
   total: number;
   payment_method?: 'Cash' | 'Card' | 'Mobile';
   payment_status?: 'paid' | 'unpaid';

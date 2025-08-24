@@ -39,9 +39,9 @@ export default function Bill({
   const calculations = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax - (order?.discount ?? 0);
+    const total = subtotal + tax;
     return { subtotal, tax, total };
-  }, [orderItems, order?.discount]);
+  }, [orderItems]);
 
   const { subtotal, tax, total } = calculations;
 
@@ -181,12 +181,6 @@ export default function Bill({
                 <span>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
                 <span>Rs.{tax.toFixed(2)}</span>
               </div>
-              {(order?.discount ?? 0) > 0 && (
-                <div className="flex justify-between text-destructive">
-                  <span>Discount</span>
-                  <span>-Rs.{(order?.discount ?? 0).toFixed(2)}</span>
-                </div>
-              )}
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>

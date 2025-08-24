@@ -105,12 +105,6 @@ export default function OrderHistory() {
                   <span className="text-muted-foreground">Tax</span>
                   <span>Rs.{order.tax.toFixed(2)}</span>
                 </div>
-                {order.discount > 0 && (
-                   <div className="flex justify-between text-destructive">
-                     <span className="text-muted-foreground">Discount</span>
-                     <span>-Rs.{order.discount.toFixed(2)}</span>
-                   </div>
-                )}
                  <div className="flex justify-between font-bold">
                   <span>Total</span>
                   <span>Rs.{order.total.toFixed(2)}</span>
