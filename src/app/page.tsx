@@ -175,7 +175,7 @@ export default function Home() {
                 <ToggleGroupItem value="Dine In" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   <Utensils /> Dine In
                 </ToggleGroupItem>
-                <ToggleGroupItem value="Delivery" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground" disabled>
+                <ToggleGroupItem value="Delivery" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   <Bike /> Delivery
                 </ToggleGroupItem>
               </ToggleGroup>
