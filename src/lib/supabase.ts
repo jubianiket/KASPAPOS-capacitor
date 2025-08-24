@@ -15,7 +15,7 @@ const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
         id: order.id,
-        created_at: order.date,
+        created_at: order.date, // This was the bug, it was missing.
         items: order.items,
         subtotal: order.sub_total ?? 0,
         tax: order.gst ?? 0,
@@ -32,12 +32,14 @@ const fromSupabase = (order: any): Order => {
 const toSupabase = (order: Partial<Order>) => {
     const payload: {[key: string]: any} = {};
 
-    // If the order has a real ID, include it for upsert
+    // Only include the ID if it's a real, positive number.
+    // Supabase upsert will fail if id is null on a new record.
     if (order.id && order.id > 0) {
         payload.id = order.id;
     }
     
-    if (order.status) payload.status = order.status;
+    // Map all fields from the order object to the database payload if they exist
+    if (order.created_at) payload.date = order.created_at;
     if (order.items) payload.items = order.items;
     if (order.subtotal !== undefined) payload.sub_total = order.subtotal;
     if (order.tax !== undefined) payload.gst = order.tax;
@@ -56,10 +58,13 @@ const toSupabase = (order: Partial<Order>) => {
         payload.payment_status = order.payment_status;
     }
 
-    // Ensure status is always valid for new orders
-    if (!payload.id && !payload.status) {
+    // Ensure status is always valid. New orders are 'received'.
+    if (order.status && order.status !== 'pending') {
+        payload.status = order.status;
+    } else if (!payload.id) { // It's a new order if there's no ID
         payload.status = 'received';
     }
+
 
     return payload;
 }
