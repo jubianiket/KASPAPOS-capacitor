@@ -132,7 +132,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
-        const updatePayload = toSupabase(order);
+        const { id, ...updatePayload } = toSupabase(order);
 
         console.log(`Attempting to update order ${order.id}:`, updatePayload);
         const { data, error } = await supabase
@@ -193,7 +193,7 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication ---
 
-export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User | null> => {
+export const signUp = async (userData: Omit<User, 'id' | 'role' | 'password'> & { password?: string }): Promise<User | null> => {
     const { data, error } = await supabase
         .from('users')
         .insert({ ...userData, role: 'staff' }) // Default role
@@ -226,7 +226,7 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 
 export const getSettings = async (userId: number): Promise<RestaurantSettings | null> => {
     const { data, error } = await supabase
-        .from('restaurant_settings')
+        .from('settings')
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -245,7 +245,7 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
     
     // Use upsert to create settings if they don't exist, or update them if they do.
     const { data, error } = await supabase
-        .from('restaurant_settings')
+        .from('settings')
         .upsert(updateData)
         .select()
         .single();
