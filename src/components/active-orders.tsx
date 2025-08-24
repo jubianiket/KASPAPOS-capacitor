@@ -17,7 +17,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
 
   const getOrderTitle = (order: Order) => {
     if (order.order_type === 'Delivery' || order.order_type === 'delivery') {
-      return `Delivery #${order.id.slice(0, 4)}`;
+      return `Delivery #${order.id.slice(-4)}`;
     }
     return `Table ${order.table_number}`;
   }

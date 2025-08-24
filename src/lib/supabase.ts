@@ -30,7 +30,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
         console.error("Error fetching active orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, created_at: o.date})) as Order[];
+    return (data as any[]).map(o => ({...o, id: o.id.toString(), created_at: o.date})) as Order[];
 };
 
 export const getCompletedOrders = async (): Promise<Order[]> => {
@@ -44,7 +44,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         console.error("Error fetching completed orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
+    return (data as any[]).map(o => ({...o, id: o.id.toString(), created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
@@ -64,7 +64,9 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Prom
         console.error("Error creating order:", error);
         return null;
     }
-    return {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
+    const newOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
+    newOrder.id = newOrder.id.toString();
+    return newOrder;
 }
 
 
@@ -75,13 +77,16 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
     if (updates.subtotal) updatePayload.sub_total = updates.subtotal;
     if (updates.tax) updatePayload.gst = updates.tax;
     if (updates.total) updatePayload.total = updates.total;
-    if (updates.payment_method) updatePayload.payment_status = 'paid';
+    if (updates.payment_method) {
+      updatePayload.payment_status = 'paid';
+      updatePayload.payment_method = updates.payment_method;
+    }
 
 
     const { data, error } = await supabase
         .from('orders')
         .update(updatePayload)
-        .eq('id', orderId)
+        .eq('id', parseInt(orderId, 10))
         .select()
         .single();
 
@@ -89,14 +94,16 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         console.error("Error updating order:", error);
         return null;
     }
-    return {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
+    const updatedOrder = {...(data as any), created_at: data.date, subtotal: data.sub_total, total: data.total, tax: data.gst, discount: 0 } as Order;
+    updatedOrder.id = updatedOrder.id.toString();
+    return updatedOrder;
 }
 
 export const deleteOrder = async (orderId: string): Promise<boolean> => {
     const { error } = await supabase
         .from('orders')
         .delete()
-        .eq('id', orderId);
+        .eq('id', parseInt(orderId, 10));
     
     if (error) {
         console.error("Error deleting order:", error);
