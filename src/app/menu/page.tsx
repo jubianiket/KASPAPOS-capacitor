@@ -1,3 +1,4 @@
+
 import { getMenuItems } from '@/lib/supabase';
 import MenuClientPage from './menu-client-page';
 
