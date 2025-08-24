@@ -36,9 +36,6 @@ const toSupabase = (order: Order) => {
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
     
-    // 'pending' is a client-side only status.
-    // It becomes 'received' when the order is first confirmed.
-    // It becomes 'completed' when it's finalized before payment.
     let dbStatus: 'received' | 'completed';
     if (order.status === 'completed' || order.payment_status === 'paid') {
         dbStatus = 'completed';
@@ -59,11 +56,6 @@ const toSupabase = (order: Order) => {
         payment_status: order.payment_status ?? 'unpaid',
         status: dbStatus,
     };
-    
-    // Only include ID if it's a real one from the DB
-    if (order.id > 0) {
-        payload.id = order.id;
-    }
     
     return payload;
 }
@@ -124,24 +116,41 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 
 
 export const saveOrder = async (order: Order): Promise<Order | null> => {
-    // Exclude 'pending' status orders from being saved to the database.
     if (order.status === 'pending') {
         return order;
     }
-    
+
     const payload = toSupabase(order);
-    
-    const { data, error } = await supabase
-        .from('orders')
-        .upsert(payload, { onConflict: 'id' })
-        .select()
-        .single();
-    
-    if (error) {
-        console.error("Error saving order:", error);
-        return null;
+    const isNewOrder = order.id <= 0;
+
+    if (isNewOrder) {
+        // Insert new order
+        const { data, error } = await supabase
+            .from('orders')
+            .insert(payload)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error inserting order:", error);
+            return null;
+        }
+        return fromSupabase(data);
+    } else {
+        // Update existing order
+        const { data, error } = await supabase
+            .from('orders')
+            .update(payload)
+            .eq('id', order.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error updating order:", error);
+            return null;
+        }
+        return fromSupabase(data);
     }
-    return fromSupabase(data);
 }
 
 
