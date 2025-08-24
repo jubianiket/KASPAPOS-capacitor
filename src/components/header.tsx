@@ -20,7 +20,7 @@ export default function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary">
           <Sheet className="h-6 w-6" />
-          <span>BillEase POS</span>
+          <span>KASPA POS</span>
         </Link>
         <nav className="flex items-center gap-4 md:gap-6">
           {navLinks.map(({ href, label, icon: Icon }) => (

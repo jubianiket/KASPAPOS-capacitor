@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 
 export const metadata: Metadata = {
-  title: 'BillEase POS',
+  title: 'KASPA POS',
   description: 'A modern Point of Sale for restaurants',
 };
 
