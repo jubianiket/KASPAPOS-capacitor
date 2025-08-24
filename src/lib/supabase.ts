@@ -41,6 +41,7 @@ const toSupabase = (order: Order) => {
     const dbStatus = order.status === 'completed' ? 'completed' : order.status === 'received' ? 'received' : 'received';
 
     const payload: { [key: string]: any } = {
+        date: order.created_at,
         items: JSON.stringify(order.items), // Always stringify JSON for Supabase
         sub_total: subtotal,
         gst: tax,
@@ -53,7 +54,7 @@ const toSupabase = (order: Order) => {
         status: dbStatus,
     };
     
-    if (order.id && order.id > 0) {
+    if (order.id > 0) {
         payload.id = order.id;
     }
     
