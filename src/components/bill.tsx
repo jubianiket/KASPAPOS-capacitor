@@ -69,11 +69,18 @@ export default function Bill({
     }
   };
 
+  const getOrderTitle = () => {
+    if (!order) return 'No Order Selected';
+    if (order.orderType === 'Delivery') return 'Delivery Order';
+    if (order.tableNumber) return `Order for Table ${order.tableNumber}`;
+    return 'Select a Table';
+  }
+
   return (
     <Card className="sticky top-24">
       <CardHeader>
         <div className="flex items-center justify-between">
-            <CardTitle>Current Order</CardTitle>
+            <CardTitle>{getOrderTitle()}</CardTitle>
             {orderItems.length > 0 && (
             <Button variant="ghost" size="icon" onClick={onClearOrder} className="text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-5 w-5" />
@@ -92,13 +99,14 @@ export default function Bill({
                     </>
                 )}
                  {order.status === 'confirmed' && <Badge variant="secondary">Confirmed</Badge>}
+                 {order.status === 'pending' && <Badge variant="outline">Pending</Badge>}
             </div>
         )}
       </CardHeader>
       <CardContent>
         {orderItems.length === 0 ? (
           <div className="text-center text-muted-foreground py-16">
-            <p>{order ? 'This order is empty.' : 'Select a table to start an order.'}</p>
+            <p>{order ? 'This order is empty.' : 'Select a table or delivery to start.'}</p>
             <p className="text-sm">Click on menu items to add them.</p>
           </div>
         ) : (
@@ -164,7 +172,7 @@ export default function Bill({
                 Confirm Order
               </Button>
             )}
-          <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder}>
+          <PaymentDialog total={total} onCompleteOrder={handleCompleteOrder} disabled={order?.status !== 'confirmed'}>
              <Button className="w-full text-lg py-6" disabled={order?.status !== 'confirmed'}>
               Proceed to Payment
             </Button>

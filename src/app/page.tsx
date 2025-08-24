@@ -32,26 +32,44 @@ export default function Home() {
 
   useEffect(() => {
     // When tableNumber changes, find if there's an active order for it
-    if (orderType === 'Dine In' && tableNumber) {
-      const existingOrder = activeOrders.find(o => o.tableNumber === tableNumber && o.status === 'confirmed');
-      if (existingOrder) {
-        setActiveOrder(existingOrder);
-      } else {
-        // Start a new pending order for this table
-        const newPendingOrder: Order = {
-          id: `pending-${tableNumber}-${Date.now()}`,
-          items: [],
-          subtotal: 0,
-          tax: 0,
-          discount: 0,
-          total: 0,
-          timestamp: new Date().toISOString(),
-          orderType: 'Dine In',
-          tableNumber: tableNumber,
-          status: 'pending',
+    if (orderType === 'Dine In') {
+        if (tableNumber) {
+            const existingOrder = activeOrders.find(o => o.tableNumber === tableNumber && o.status === 'confirmed');
+            if (existingOrder) {
+                setActiveOrder(existingOrder);
+            } else {
+                // Start a new pending order for this table
+                const newPendingOrder: Order = {
+                id: `pending-${tableNumber}-${Date.now()}`,
+                items: [],
+                subtotal: 0,
+                tax: 0,
+                discount: 0,
+                total: 0,
+                timestamp: new Date().toISOString(),
+                orderType: 'Dine In',
+                tableNumber: tableNumber,
+                status: 'pending',
+                };
+                setActiveOrder(newPendingOrder);
+            }
+        } else {
+             setActiveOrder(null);
+        }
+    } else if (orderType === 'Delivery') {
+        // Always have a fresh pending order for delivery
+        const newDeliveryOrder: Order = {
+            id: `pending-delivery-${Date.now()}`,
+            items: [],
+            subtotal: 0,
+            tax: 0,
+            discount: 0,
+            total: 0,
+            timestamp: new Date().toISOString(),
+            orderType: 'Delivery',
+            status: 'pending',
         };
-        setActiveOrder(newPendingOrder);
-      }
+        setActiveOrder(newDeliveryOrder);
     } else {
       setActiveOrder(null);
     }
@@ -75,7 +93,7 @@ export default function Home() {
         toast({
             variant: "destructive",
             title: "No order selected",
-            description: "Please select a table for Dine-In orders.",
+            description: "Please select a table for Dine-In orders or switch to Delivery.",
         });
         return;
     }
@@ -116,8 +134,13 @@ export default function Home() {
   const clearOrder = () => {
     if(!activeOrder) return;
     if(activeOrder.status === 'pending') {
-        setActiveOrder(null);
-        setTableNumber('');
+        if(activeOrder.orderType === 'Dine In') {
+            setActiveOrder(null);
+            setTableNumber('');
+        } else {
+             // For delivery, just clear items
+            updateOrderItems([]);
+        }
     } else {
         // Confirmed order cannot be cleared, only items removed
         updateOrderItems([]);
@@ -125,16 +148,29 @@ export default function Home() {
   };
 
   const confirmOrder = (confirmedOrder: Order) => {
+    const newId = confirmedOrder.orderType === 'Dine In' 
+        ? `confirmed-${confirmedOrder.tableNumber}-${Date.now()}`
+        : `confirmed-delivery-${Date.now()}`;
+
     const newConfirmedOrder: Order = {
       ...confirmedOrder,
-      id: `confirmed-${confirmedOrder.tableNumber}-${Date.now()}`,
+      id: newId,
       status: 'confirmed',
       timestamp: new Date().toISOString(),
     };
-    setActiveOrders([...activeOrders.filter(o => o.id !== confirmedOrder.id), newConfirmedOrder]);
+    
+    // For dine-in, we replace the pending order with the confirmed one.
+    // For delivery, we just add it.
+    const otherActiveOrders = activeOrders.filter(o => o.id !== confirmedOrder.id);
+    setActiveOrders([...otherActiveOrders, newConfirmedOrder]);
     setActiveOrder(newConfirmedOrder);
+    
+    const toastTitle = confirmedOrder.orderType === 'Dine In'
+        ? `Order for Table ${confirmedOrder.tableNumber} Confirmed`
+        : 'Delivery Order Confirmed';
+
     toast({
-      title: `Order for Table ${confirmedOrder.tableNumber} Confirmed`,
+      title: toastTitle,
       description: 'You can now add more items or proceed to payment.',
     });
   };
@@ -150,14 +186,40 @@ export default function Home() {
     
     // Remove from active orders
     setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
-    setActiveOrder(null);
-    setTableNumber('');
+    
+    if(completedOrder.orderType === 'Dine In') {
+        setActiveOrder(null);
+        setTableNumber('');
+    } else {
+        // Start a fresh delivery order
+        const newDeliveryOrder: Order = {
+            id: `pending-delivery-${Date.now()}`,
+            items: [], subtotal: 0, tax: 0, discount: 0, total: 0,
+            timestamp: new Date().toISOString(),
+            orderType: 'Delivery',
+            status: 'pending',
+        };
+        setActiveOrder(newDeliveryOrder);
+    }
+
 
     toast({
       title: 'Payment Successful',
       description: 'The order has been completed and saved.',
     });
   };
+  
+  const handleOrderTypeChange = (value: 'Dine In' | 'Delivery') => {
+      if(value) {
+        if(activeOrder && activeOrder.items.length > 0 && activeOrder.status === 'pending') {
+            const switchConfirmed = confirm("You have a pending order. Do you want to discard it and switch order type?");
+            if(!switchConfirmed) return;
+        }
+        setOrderType(value);
+        setTableNumber('');
+        setActiveOrder(null);
+      }
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -169,13 +231,7 @@ export default function Home() {
               <ToggleGroup 
                 type="single" 
                 value={orderType} 
-                onValueChange={(value: 'Dine In' | 'Delivery') => {
-                  if(value) {
-                    setOrderType(value);
-                    setTableNumber('');
-                    setActiveOrder(null);
-                  }
-                }}
+                onValueChange={handleOrderTypeChange}
                 className="bg-background rounded-lg p-1 border"
               >
                 <ToggleGroupItem value="Dine In" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">

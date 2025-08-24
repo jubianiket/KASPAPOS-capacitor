@@ -20,12 +20,14 @@ interface PaymentDialogProps {
   children: React.ReactNode;
   total: number;
   onCompleteOrder: (paymentMethod: NonNullable<Order['paymentMethod']>) => void;
+  disabled?: boolean;
 }
 
 export default function PaymentDialog({
   children,
   total,
   onCompleteOrder,
+  disabled = false,
 }: PaymentDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<NonNullable<Order['paymentMethod']> | ''>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -38,9 +40,17 @@ export default function PaymentDialog({
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (disabled) return;
+    setIsOpen(open);
+     if (!open) {
+      setPaymentMethod('');
+    }
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild disabled={disabled}>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Complete Payment</DialogTitle>
