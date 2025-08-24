@@ -11,7 +11,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-    const { data, error } = await supabase.from('menu_items').select('*').eq('is_active', true);
+    const { data, error } = await supabase.from('menu_items').select('*');
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
