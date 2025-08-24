@@ -63,7 +63,8 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         console.error("Error fetching menu items:", error);
         return [];
     }
-    return data as MenuItem[];
+    // Ensure rate is always a number
+    return data.map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
 }
 
 export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>): Promise<MenuItem | null> => {

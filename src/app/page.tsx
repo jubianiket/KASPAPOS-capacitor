@@ -102,6 +102,8 @@ export default function Home() {
         return;
     }
 
+    const itemToAdd: OrderItem = { ...item, quantity: 1, rate: Number(item.rate) };
+
     if (activeOrder) {
       const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
       let newItems: OrderItem[];
@@ -113,12 +115,12 @@ export default function Home() {
             : orderItem
         );
       } else {
-        newItems = [...activeOrder.items, { ...item, quantity: 1, rate: item.rate }];
+        newItems = [...activeOrder.items, itemToAdd];
       }
       await updateOrderItems(activeOrder.id, newItems);
     } else {
       const newOrderData: Omit<Order, 'id' | 'created_at'> = {
-          items: [{ ...item, quantity: 1, rate: item.rate }],
+          items: [itemToAdd],
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
           table_number: tableNumber,
