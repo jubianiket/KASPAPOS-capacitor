@@ -32,9 +32,20 @@ export default function SignupPage() {
         e.preventDefault();
         setIsLoading(true);
 
+        const phoneAsNumber = Number(formData.phone);
+        if (isNaN(phoneAsNumber)) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Phone Number',
+                description: 'Please enter a valid phone number.',
+            });
+            setIsLoading(false);
+            return;
+        }
+
         const newUser: Omit<User, 'id' | 'role'> = {
             ...formData,
-            phone: Number(formData.phone),
+            phone: phoneAsNumber,
         };
 
         const user = await signUp(newUser);
@@ -74,7 +85,7 @@ export default function SignupPage() {
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" value={formData.phone} onChange={handleChange} required />
+                            <Input id="phone" type="tel" pattern="[0-9]*" value={formData.phone} onChange={handleChange} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
@@ -101,4 +112,3 @@ export default function SignupPage() {
         </div>
     );
 }
-
