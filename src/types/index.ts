@@ -11,6 +11,7 @@ export interface MenuItem {
 
 export interface OrderItem extends MenuItem {
   quantity: number;
+  portion?: string; // Add portion to OrderItem
 }
 
 export interface Order {
@@ -44,7 +45,7 @@ export interface KitchenOrder {
 export interface User {
     id: number;
     username: string;
-    password?: string; // Optional for safety on client-side
+    password?: string;
     role: string;
     name: string;
     phone: number;

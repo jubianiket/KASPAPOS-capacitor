@@ -14,8 +14,8 @@ import { getSettings } from '@/lib/supabase';
 
 interface BillProps {
   order: Order | null;
-  onUpdateQuantity: (itemId: number, quantity: number) => void;
-  onRemoveItem: (itemId: number) => void;
+  onUpdateQuantity: (itemId: number, portion: string | undefined, quantity: number) => void;
+  onRemoveItem: (itemId: number, portion: string | undefined) => void;
   onClearOrder: () => void;
   onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
   onConfirmOrder: () => void;
@@ -182,21 +182,22 @@ export default function Bill({
           <>
             <ScrollArea className="h-64 pr-4">
               <div className="space-y-4">
-                {orderItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
+                {orderItems.map((item, index) => (
+                  <div key={`${item.id}-${item.portion}-${index}`} className="flex items-center gap-4">
                     <div className="flex-grow">
                       <p className="font-medium">{item.name}</p>
+                      {item.portion && <p className="text-xs text-muted-foreground">{item.portion}</p>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity - 1)}>
                         <MinusCircle className="w-4 h-4" />
                       </Button>
                       <span className="font-bold w-4 text-center">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.portion, item.quantity + 1)}>
                         <PlusCircle className="w-4 h-4" />
                       </Button>
                         <p className="text-sm text-muted-foreground w-12 text-right">Rs.{(item.rate * item.quantity).toFixed(2)}</p>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onRemoveItem(item.id, item.portion)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

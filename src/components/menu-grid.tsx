@@ -9,9 +9,10 @@ import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import PortionSelectionDialog from './portion-selection-dialog';
 
 interface MenuGridProps {
-  onAddToOrder: (item: MenuItem) => void;
+  onAddToOrder: (item: MenuItem, portion: string) => void;
   onCategoriesLoad: (categories: string[]) => void;
   selectedCategory: string;
 }
@@ -40,6 +41,7 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const { toast } = useToast();
 
   const fetchMenuItems = useCallback(async () => {
@@ -79,6 +81,21 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
     }
   };
 
+  const handleSelectItemForPortion = (item: MenuItem) => {
+    setSelectedItem(item);
+  }
+
+  const handlePortionConfirm = (portion: string) => {
+    if (selectedItem) {
+        onAddToOrder(selectedItem, portion);
+        toast({
+            title: "Item Added",
+            description: `${selectedItem.name} (${portion}) was added to the order.`
+        });
+    }
+    setSelectedItem(null);
+  }
+
   const filteredMenuItems = selectedCategory === 'All'
     ? menuItems
     : menuItems.filter(item => item.category === selectedCategory);
@@ -111,6 +128,14 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
 
   return (
     <div>
+        {selectedItem && (
+            <PortionSelectionDialog 
+                isOpen={!!selectedItem}
+                onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
+                itemName={selectedItem.name}
+                onConfirm={handlePortionConfirm}
+            />
+        )}
         {filteredMenuItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
                 <p>No menu items found for this category.</p>
@@ -132,7 +157,7 @@ export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCateg
                     <MenuItemCard 
                       key={item.id} 
                       item={item} 
-                      onAddToOrder={onAddToOrder} 
+                      onAddToOrder={() => handleSelectItemForPortion(item)} 
                       onUpdateItem={handleUpdateItem}
                     />
                 ))}

@@ -44,14 +44,22 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
     setIsEditing(true);
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      onAddToOrder(item);
+  }
+
   return (
-    <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <Card 
+        className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+        onClick={handleCardClick}
+    >
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         {isEditing ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <Input
                     type="number"
                     value={newRate}
@@ -73,7 +81,7 @@ export default function MenuItemCard({ item, onAddToOrder, onUpdateItem }: MenuI
                 </Button>
             </div>
         )}
-        <Button size="icon" variant="outline" onClick={() => onAddToOrder(item)} aria-label={`Add ${item.name} to order`}>
+        <Button size="icon" variant="outline" aria-label={`Add ${item.name} to order`}>
           <Plus className="h-5 w-5" />
         </Button>
       </CardFooter>

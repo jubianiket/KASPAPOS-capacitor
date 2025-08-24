@@ -179,7 +179,7 @@ export default function Home() {
   }
 
 
-  const addToOrder = async (item: MenuItem) => {
+  const addToOrder = async (item: MenuItem, portion: string) => {
     const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     if (currentOrderType === 'dine-in' && !tableNumber) {
         toast({
@@ -190,17 +190,23 @@ export default function Home() {
         return;
     }
 
-    const itemToAdd: OrderItem = { ...item, quantity: 1, rate: Number(item.rate) };
+    // A unique key for an order item is now its ID and its portion
+    const itemKey = `${item.id}-${portion}`;
+
+    const itemToAdd: OrderItem = { ...item, quantity: 1, rate: Number(item.rate), portion };
 
     let orderToUpdate: Order;
 
     if (activeOrder) {
-      const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
+      const existingItem = activeOrder.items.find(
+        (orderItem) => `${orderItem.id}-${orderItem.portion}` === itemKey
+      );
+      
       let newItems: OrderItem[];
 
       if (existingItem) {
         newItems = activeOrder.items.map((orderItem) =>
-          orderItem.id === item.id
+          `${orderItem.id}-${orderItem.portion}` === itemKey
             ? { ...orderItem, quantity: orderItem.quantity + 1 }
             : orderItem
         );
@@ -228,8 +234,14 @@ export default function Home() {
     // Recalculate totals before saving
     const subtotal = orderToUpdate.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     let tax = 0;
-     if (settings && settings.tax_enabled && settings.tax_rate) {
-        tax = subtotal * (settings.tax_rate / 100);
+     if (settings && settings.tax_enabled) {
+        if (settings.is_restaurant) {
+            if (settings.cgst) tax += subtotal * (settings.cgst / 100);
+            if (settings.igst) tax += subtotal * (settings.igst / 100);
+        }
+        if (settings.is_bar) {
+            if (settings.vat) tax += subtotal * (settings.vat / 100);
+        }
     }
     const total = subtotal + tax;
 
@@ -240,21 +252,24 @@ export default function Home() {
     await updateAndSaveOrder(orderToUpdate);
   };
 
-  const updateQuantity = (itemId: number, quantity: number) => {
+  const updateQuantity = (itemId: number, portion: string | undefined, quantity: number) => {
      if (!activeOrder) return;
+    const itemKey = `${itemId}-${portion}`;
+
     if (quantity <= 0) {
-      removeFromOrder(itemId);
+      removeFromOrder(itemId, portion);
     } else {
        const newItems = activeOrder.items.map((item) =>
-          item.id === itemId ? { ...item, quantity } : item
+          `${item.id}-${item.portion}` === itemKey ? { ...item, quantity } : item
         );
        updateAndSaveOrder({ ...activeOrder, items: newItems });
     }
   };
 
-  const removeFromOrder = (itemId: number) => {
+  const removeFromOrder = (itemId: number, portion: string | undefined) => {
     if (!activeOrder) return;
-    const newItems = activeOrder.items.filter((item) => item.id !== itemId);
+    const itemKey = `${itemId}-${portion}`;
+    const newItems = activeOrder.items.filter((item) => `${item.id}-${item.portion}` !== itemKey);
     updateAndSaveOrder({ ...activeOrder, items: newItems });
   };
 
@@ -436,7 +451,7 @@ export default function Home() {
             onCompleteOrder={completeOrderAndPay}
             onConfirmOrder={() => confirmOrder()}
             onMarkAsCompleted={markAsCompleted}
-            onAddToOrder={addToOrder}
+            onAddToOrder={(item) => addToOrder(item, 'Regular')} // Fallback for suggestions
           />
         </div>
       </div>
