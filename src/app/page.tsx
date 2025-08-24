@@ -51,7 +51,10 @@ export default function Home() {
         const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
         setActiveOrder(existingOrder || null);
     } else if (currentOrderType === 'delivery') {
-        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && !o.table_number && o.status !== 'completed');
+        // Since delivery orders aren't tied to a table, we need a better way to manage them.
+        // For simplicity, we find the first active delivery order.
+        // A real-world app might have a more sophisticated way to handle multiple delivery orders.
+        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status !== 'completed');
         setActiveOrder(deliveryOrder || null);
     } else {
       setActiveOrder(null);
@@ -125,7 +128,7 @@ export default function Home() {
           items: [{ ...item, quantity: 1, rate: item.rate }],
           subtotal: 0, tax: 0, discount: 0, total: 0,
           order_type: currentOrderType,
-          table_number: tableNumber,
+          table_number: tableNumber, // Pass the table number for dine-in
           status: 'received',
       };
       const newOrder = await createOrder(newOrderData);
