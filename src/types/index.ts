@@ -61,4 +61,9 @@ export interface RestaurantSettings {
     tax_id?: string | null;
     dark_mode?: boolean;
     theme_color?: string | null;
+    is_bar?: boolean;
+    is_restaurant?: boolean;
+    vat?: number;
+    igst?: number;
+    cgst?: number;
 }

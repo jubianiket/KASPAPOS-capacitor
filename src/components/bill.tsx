@@ -50,10 +50,32 @@ export default function Bill({
     let tax = 0;
     const taxBreakdown: { name: string, amount: number }[] = [];
 
-    if (settings && settings.tax_enabled && settings.tax_rate) {
-        const taxAmount = subtotal * (settings.tax_rate / 100);
-        tax += taxAmount;
-        taxBreakdown.push({ name: `Tax (${settings.tax_rate}%)`, amount: taxAmount});
+    if (settings?.tax_enabled) {
+        if (settings.is_restaurant) {
+            if (settings.cgst) {
+                const taxAmount = subtotal * (settings.cgst / 100);
+                tax += taxAmount;
+                taxBreakdown.push({ name: `CGST (${settings.cgst}%)`, amount: taxAmount });
+            }
+            if (settings.igst) {
+                const taxAmount = subtotal * (settings.igst / 100);
+                tax += taxAmount;
+                taxBreakdown.push({ name: `IGST (${settings.igst}%)`, amount: taxAmount });
+            }
+        }
+        if (settings.is_bar) {
+            if (settings.vat) {
+                const taxAmount = subtotal * (settings.vat / 100);
+                tax += taxAmount;
+                taxBreakdown.push({ name: `VAT (${settings.vat}%)`, amount: taxAmount });
+            }
+        }
+        // Fallback to default tax if no specific taxes apply but tax is enabled
+        if (taxBreakdown.length === 0 && settings.tax_rate) {
+            const taxAmount = subtotal * (settings.tax_rate / 100);
+            tax += taxAmount;
+            taxBreakdown.push({ name: `Tax (${settings.tax_rate}%)`, amount: taxAmount});
+        }
     }
 
     const total = subtotal + tax;

@@ -16,6 +16,7 @@ import { getSettings, updateSettings } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const settingsSchema = z.object({
   restaurant_name: z.string().min(1, 'Restaurant name is required'),
@@ -26,6 +27,11 @@ const settingsSchema = z.object({
   tax_id: z.string().optional(),
   dark_mode: z.boolean().default(false),
   theme_color: z.string().optional(),
+  is_bar: z.boolean().default(false),
+  is_restaurant: z.boolean().default(false),
+  vat: z.coerce.number().min(0).optional(),
+  igst: z.coerce.number().min(0).optional(),
+  cgst: z.coerce.number().min(0).optional(),
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -53,10 +59,17 @@ export default function SettingsPage() {
       tax_id: '',
       dark_mode: false,
       theme_color: '',
+      is_bar: false,
+      is_restaurant: false,
+      vat: 0,
+      igst: 0,
+      cgst: 0,
     }
   });
 
   const taxEnabled = watch('tax_enabled');
+  const isBar = watch('is_bar');
+  const isRestaurant = watch('is_restaurant');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -98,7 +111,7 @@ export default function SettingsPage() {
    useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       if (name === 'dark_mode') {
-        document.documentElement.classList.toggle('dark', value.dark_mode);
+        document.documentElement.classList.toggle('dark', !!value.dark_mode);
       }
     });
     return () => subscription.unsubscribe();
@@ -151,6 +164,34 @@ export default function SettingsPage() {
             />
             
             <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Business Type</h3>
+              <div className="flex items-center gap-8">
+                <Controller
+                  name="is_restaurant"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="is_restaurant" checked={field.value} onCheckedChange={field.onChange} />
+                        <Label htmlFor="is_restaurant">Restaurant</Label>
+                    </div>
+                  )}
+                />
+                <Controller
+                  name="is_bar"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="is_bar" checked={field.value} onCheckedChange={field.onChange} />
+                        <Label htmlFor="is_bar">Bar</Label>
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
             
             <div className="space-y-4">
                 <h3 className="text-lg font-medium">Tax Settings</h3>
@@ -165,27 +206,66 @@ export default function SettingsPage() {
                   )}
                 />
                 {taxEnabled && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <Controller
-                        name="tax_rate"
-                        control={control}
-                        render={({ field }) => (
-                            <div className="space-y-2">
-                            <Label htmlFor="tax_rate">Tax Rate (%)</Label>
-                            <Input id="tax_rate" type="number" step="0.01" {...field} value={field.value || ''} />
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <Controller
+                            name="tax_id"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                <Label htmlFor="tax_id">Tax ID (e.g., GSTIN)</Label>
+                                <Input id="tax_id" {...field} value={field.value || ''} />
+                                </div>
+                            )}
+                            />
+                            <Controller
+                            name="tax_rate"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
+                                <Input id="tax_rate" type="number" step="0.01" {...field} value={field.value || ''} />
+                                </div>
+                            )}
+                            />
+                        </div>
+
+                        {isRestaurant && (
+                             <div className="grid grid-cols-2 gap-4">
+                                <Controller
+                                name="cgst"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="space-y-2">
+                                    <Label htmlFor="cgst">CGST (%)</Label>
+                                    <Input id="cgst" type="number" step="0.01" {...field} value={field.value || ''} />
+                                    </div>
+                                )}
+                                />
+                                <Controller
+                                name="igst"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="space-y-2">
+                                    <Label htmlFor="igst">IGST (%)</Label>
+                                    <Input id="igst" type="number" step="0.01" {...field} value={field.value || ''} />
+                                    </div>
+                                )}
+                                />
                             </div>
                         )}
-                        />
-                        <Controller
-                        name="tax_id"
-                        control={control}
-                        render={({ field }) => (
-                            <div className="space-y-2">
-                            <Label htmlFor="tax_id">Tax ID (e.g., GSTIN)</Label>
-                            <Input id="tax_id" {...field} value={field.value || ''} />
-                            </div>
+                        {isBar && (
+                            <Controller
+                            name="vat"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                <Label htmlFor="vat">VAT (%)</Label>
+                                <Input id="vat" type="number" step="0.01" {...field} value={field.value || ''} />
+                                </div>
+                            )}
+                            />
                         )}
-                        />
                     </div>
                 )}
             </div>
