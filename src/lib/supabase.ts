@@ -40,7 +40,7 @@ const toSupabase = (order: Order) => {
         table_number: order.table_number,
         date: order.created_at,
         payment_method: order.payment_method,
-        payment_status: order.payment_status,
+        payment_status: order.payment_status ?? 'unpaid', // Ensure payment_status is always set
     };
 
     // Only include the ID if it's a real, positive number for upsert.
@@ -48,7 +48,6 @@ const toSupabase = (order: Order) => {
         payload.id = order.id;
     }
 
-    // This is the critical fix. Ensure status is always valid for the DB.
     // The only valid statuses for the 'orders' table are 'received' and 'completed'.
     if (order.status === 'completed') {
         payload.status = 'completed';
