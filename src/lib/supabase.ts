@@ -39,7 +39,8 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
     
-    // Only include table_number if it's not null or undefined
+    // Only include table_number if it has a value.
+    // The DB will reject null values for this field if the order is not 'dine-in'
     if (order.table_number) {
         payload.table_number = order.table_number;
     }
