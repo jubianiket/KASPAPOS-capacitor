@@ -15,6 +15,7 @@ import type { RestaurantSettings } from '@/types';
 import { getSettings, updateSettings } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
 
 const settingsSchema = z.object({
   restaurant_name: z.string().min(1, 'Restaurant name is required'),
