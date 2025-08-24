@@ -3,12 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const tables = Array.from({ length: 12 }, (_, i) => `T${i + 1}`);
+const tables = Array.from({ length: 12 }, (_, i) => i + 1);
 
 interface TableSelectionProps {
-  selectedTable: string;
-  onSelectTable: (table: string) => void;
-  occupiedTables: string[];
+  selectedTable: number | null;
+  onSelectTable: (table: number) => void;
+  occupiedTables: (number | null)[];
 }
 
 export default function TableSelection({ selectedTable, onSelectTable, occupiedTables }: TableSelectionProps) {
@@ -34,7 +34,7 @@ export default function TableSelection({ selectedTable, onSelectTable, occupiedT
               )}
             >
               <CardContent className="p-2">
-                <span className="font-bold text-lg">{table}</span>
+                <span className="font-bold text-lg">T{table}</span>
               </CardContent>
               {isOccupied && (
                  <span className="absolute -top-2 -right-2 flex h-4 w-4">

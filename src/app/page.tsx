@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order } from '@/types';
@@ -23,22 +23,25 @@ export default function Home() {
   const { toast } = useToast();
   
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery'>('Dine In');
-  const [tableNumber, setTableNumber] = useState<string>('');
+  const [tableNumber, setTableNumber] = useState<number | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  useEffect(() => {
-    setIsClient(true);
-    fetchOrders();
-  }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
       setIsLoading(true);
       const orders = await getActiveOrders();
       setActiveOrders(orders);
       setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    setIsClient(true);
+    fetchOrders();
+  }, [fetchOrders]);
 
   const occupiedTables = activeOrders
-    .filter(o => o.order_type === 'Dine In' && o.table_number && o.status !== 'completed' && o.status !== 'pending')
+    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed' && o.status !== 'pending')
     .map(o => o.table_number!);
 
   useEffect(() => {
@@ -53,16 +56,17 @@ export default function Home() {
                   let pendingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status === 'pending');
                   if (!pendingOrder) {
                       // Start a new pending order for this table
-                      const newOrder = await createOrder({
+                      const newOrderData: Omit<Order, 'id' | 'created_at'> = {
                           items: [],
                           subtotal: 0,
                           tax: 0,
                           discount: 0,
                           total: 0,
-                          order_type: 'Dine In',
+                          order_type: 'dine-in',
                           table_number: tableNumber,
                           status: 'pending',
-                      });
+                      };
+                      const newOrder = await createOrder(newOrderData);
                       if(newOrder) {
                         setActiveOrders(prev => [...prev, newOrder!]);
                         pendingOrder = newOrder;
@@ -75,17 +79,18 @@ export default function Home() {
           }
       } else if (orderType === 'Delivery') {
           // Find if there's a pending delivery order.
-          let pendingDeliveryOrder = activeOrders.find(o => o.order_type === 'Delivery' && o.status === 'pending');
+          let pendingDeliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status === 'pending');
           if (!pendingDeliveryOrder) {
-              const newOrder = await createOrder({
+              const newOrderData: Omit<Order, 'id' | 'created_at'> = {
                   items: [],
                   subtotal: 0,
                   tax: 0,
                   discount: 0,
                   total: 0,
-                  order_type: 'Delivery',
+                  order_type: 'delivery',
                   status: 'pending',
-              });
+              };
+              const newOrder = await createOrder(newOrderData);
               if (newOrder) {
                 setActiveOrders(prev => [...prev, newOrder!]);
                 pendingDeliveryOrder = newOrder;
@@ -104,12 +109,12 @@ export default function Home() {
   const handleSelectOrder = (orderId: number) => {
     const selected = activeOrders.find(o => o.id === orderId);
     if(selected) {
-        if (selected.order_type === 'Dine In' || selected.order_type === 'dine-in') {
+        if (selected.order_type === 'dine-in') {
             setOrderType('Dine In');
-            setTableNumber(selected.table_number || '');
+            setTableNumber(selected.table_number || null);
         } else {
             setOrderType('Delivery');
-            setTableNumber('');
+            setTableNumber(null);
         }
         setActiveOrder(selected);
     }
@@ -193,8 +198,8 @@ export default function Home() {
         const success = await deleteOrder(activeOrder.id);
         if (success) {
             setActiveOrders(prev => prev.filter(o => o.id !== activeOrder!.id));
-            if(activeOrder.order_type === 'Dine In') {
-                setTableNumber('');
+            if(activeOrder.order_type === 'dine-in') {
+                setTableNumber(null);
             }
             setActiveOrder(null);
         } else {
@@ -217,7 +222,7 @@ export default function Home() {
         setActiveOrders(updatedActiveOrders);
         setActiveOrder(updatedOrder);
         
-        const toastTitle = (updatedOrder.order_type === 'Dine In' || updatedOrder.order_type === 'dine-in')
+        const toastTitle = (updatedOrder.order_type === 'dine-in')
             ? `Order for Table ${updatedOrder.table_number} Confirmed`
             : 'Delivery Order Confirmed';
 
@@ -244,9 +249,9 @@ export default function Home() {
         setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
         
         // Reset the UI based on order type
-        if(completedOrder.order_type === 'Dine In' || completedOrder.order_type === 'dine-in') {
+        if(completedOrder.order_type === 'dine-in') {
             setActiveOrder(null);
-            setTableNumber('');
+            setTableNumber(null);
         } else {
             setActiveOrder(null); // This will trigger useEffect to create a new one
             setOrderType('Delivery'); // Force re-evaluation
@@ -277,10 +282,16 @@ export default function Home() {
             }
         }
         setOrderType(value);
-        setTableNumber('');
+        setTableNumber(null);
         setActiveOrder(null);
       }
   }
+
+  const handleCategoryChange = (value: string) => {
+    if (value) {
+      setSelectedCategory(value);
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -332,7 +343,26 @@ export default function Home() {
                 )}
               </div>
             )}
-            <MenuGrid onAddToOrder={addToOrder} />
+            <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Menu Categories</h3>
+                <ToggleGroup 
+                    type="single" 
+                    value={selectedCategory} 
+                    onValueChange={handleCategoryChange}
+                    className="flex-wrap justify-start"
+                >
+                {categories.map(category => (
+                    <ToggleGroupItem key={category} value={category}>
+                        {category}
+                    </ToggleGroupItem>
+                ))}
+                </ToggleGroup>
+            </div>
+            <MenuGrid 
+              onAddToOrder={addToOrder}
+              onCategoriesLoad={setCategories}
+              selectedCategory={selectedCategory}
+            />
           </div>
         </div>
         <div className="mt-8 lg:mt-0">
@@ -350,5 +380,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

@@ -16,7 +16,7 @@ interface ActiveOrdersProps {
 export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: ActiveOrdersProps) {
 
   const getOrderTitle = (order: Order) => {
-    if (order.order_type === 'Delivery' || order.order_type === 'delivery') {
+    if (order.order_type === 'delivery') {
       return `Delivery #${order.id.toString().slice(-4)}`;
     }
     return `Table ${order.table_number}`;
@@ -45,7 +45,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
               <CardContent className="p-3 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between mb-2">
                    <p className="font-bold">{getOrderTitle(order)}</p>
-                   {(order.order_type === 'Dine In' || order.order_type === 'dine-in')
+                   {order.order_type === 'dine-in'
                         ? <Utensils className="w-4 h-4 text-muted-foreground" /> 
                         : <Bike className="w-4 h-4 text-muted-foreground" />
                     }
@@ -68,5 +68,3 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
     </div>
   );
 }
-
-    

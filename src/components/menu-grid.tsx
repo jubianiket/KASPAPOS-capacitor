@@ -6,18 +6,17 @@ import type { MenuItem } from '@/types';
 import MenuItemCard from './menu-item-card';
 import { getMenuItems, updateMenuItem } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
-import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { useToast } from '@/hooks/use-toast';
 
 interface MenuGridProps {
   onAddToOrder: (item: MenuItem) => void;
+  onCategoriesLoad: (categories: string[]) => void;
+  selectedCategory: string;
 }
 
-export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
+export default function MenuGrid({ onAddToOrder, onCategoriesLoad, selectedCategory }: MenuGridProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const { toast } = useToast();
 
   const fetchMenuItems = useCallback(async () => {
@@ -26,10 +25,10 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
     setMenuItems(items);
     
     const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
-    setCategories(uniqueCategories);
+    onCategoriesLoad(uniqueCategories);
 
     setIsLoading(false);
-  }, []);
+  }, [onCategoriesLoad]);
 
   useEffect(() => {
     fetchMenuItems();
@@ -53,12 +52,6 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
     }
   };
 
-  const handleCategoryChange = (value: string) => {
-    if (value) {
-      setSelectedCategory(value);
-    }
-  };
-
   const filteredMenuItems = selectedCategory === 'All'
     ? menuItems
     : menuItems.filter(item => item.category === selectedCategory);
@@ -78,22 +71,6 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
 
   return (
     <div>
-        <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Menu Categories</h3>
-            <ToggleGroup 
-                type="single" 
-                value={selectedCategory} 
-                onValueChange={handleCategoryChange}
-                className="flex-wrap justify-start"
-            >
-            {categories.map(category => (
-                <ToggleGroupItem key={category} value={category}>
-                    {category}
-                </ToggleGroupItem>
-            ))}
-            </ToggleGroup>
-        </div>
-
         {filteredMenuItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
                 <p>No menu items found for this category.</p>

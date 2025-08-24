@@ -60,18 +60,20 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
         console.error("Error fetching completed orders:", error);
         return [];
     }
-    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total, total: o.total, tax: o.gst ?? 0, discount: 0 })) as Order[];
+    return (data as any[]).map(o => ({...o, created_at: o.date, subtotal: o.sub_total ?? 0, total: o.total ?? 0, tax: o.gst ?? 0, discount: 0 })) as Order[];
 }
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
     const { data, error } = await supabase
         .from('orders')
         .insert([{ 
-            ...order, 
+            items: order.items,
             sub_total: order.subtotal, 
             total: order.total, 
             gst: order.tax,
-            order_type: order.order_type.toLowerCase().replace(' ', '-')
+            order_type: order.order_type,
+            table_number: order.table_number,
+            status: order.status
         }])
         .select()
         .single();
@@ -89,9 +91,9 @@ export const updateOrder = async (orderId: number, updates: Partial<Order>): Pro
     const updatePayload: {[key: string]: any} = {};
     if (updates.status) updatePayload.status = updates.status;
     if (updates.items) updatePayload.items = updates.items;
-    if (updates.subtotal) updatePayload.sub_total = updates.subtotal;
-    if (updates.tax) updatePayload.gst = updates.tax;
-    if (updates.total) updatePayload.total = updates.total;
+    if (updates.subtotal !== undefined) updatePayload.sub_total = updates.subtotal;
+    if (updates.tax !== undefined) updatePayload.gst = updates.tax;
+    if (updates.total !== undefined) updatePayload.total = updates.total;
     if (updates.payment_method) {
       updatePayload.payment_status = 'paid';
       updatePayload.payment_method = updates.payment_method;
@@ -125,5 +127,3 @@ export const deleteOrder = async (orderId: number): Promise<boolean> => {
     }
     return true;
 }
-
-    
