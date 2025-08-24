@@ -31,7 +31,7 @@ const fromSupabase = (order: any): Order => {
     }
 }
 
-const toSupabase = (order: Order) => {
+const toSupabase = (order: Order, isNew: boolean) => {
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
@@ -56,6 +56,10 @@ const toSupabase = (order: Order) => {
         payment_status: order.payment_status ?? 'unpaid',
         status: dbStatus,
     };
+
+    if (!isNew) {
+        payload.id = order.id;
+    }
     
     return payload;
 }
@@ -120,11 +124,15 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         return order;
     }
 
-    const payload = toSupabase(order);
     const isNewOrder = order.id <= 0;
 
     if (isNewOrder) {
-        // Insert new order
+        // Omitting the ID for new orders so Supabase can generate it.
+        const { id, ...orderData } = order;
+        const payload = toSupabase({ ...orderData, id: 0 }, true); // Pass a placeholder ID
+        
+        console.log("Attempting to insert order:", payload);
+
         const { data, error } = await supabase
             .from('orders')
             .insert(payload)
@@ -138,6 +146,10 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         return fromSupabase(data);
     } else {
         // Update existing order
+        const payload = toSupabase(order, false);
+
+        console.log(`Attempting to update order ${order.id}:`, payload);
+
         const { data, error } = await supabase
             .from('orders')
             .update(payload)
