@@ -36,6 +36,11 @@ const toSupabase = (order: Order) => {
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax - (order.discount ?? 0);
 
+    // This is the critical part. We determine the status to be sent to DB.
+    // If the status is 'completed', we keep it. Otherwise, it must become 'received'.
+    // This ensures we never try to save 'pending' or any other invalid state.
+    const dbStatus = order.status === 'completed' ? 'completed' : 'received';
+
     const payload: { [key: string]: any } = {
         items: order.items,
         sub_total: subtotal,
@@ -47,7 +52,7 @@ const toSupabase = (order: Order) => {
         date: order.created_at || new Date().toISOString(),
         payment_method: order.payment_method,
         payment_status: order.payment_status ?? 'unpaid',
-        status: order.status === 'completed' ? 'completed' : 'received',
+        status: dbStatus, // Use the explicitly determined valid status
     };
 
     if (order.id && order.id > 0) {
