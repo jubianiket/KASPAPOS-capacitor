@@ -254,6 +254,15 @@ export default function Home() {
   };
   
     const addCustomItemToOrder = (itemName: string, itemRate: number) => {
+    const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
+    if (currentOrderType === 'dine-in' && !tableNumber) {
+        toast({
+            variant: "destructive",
+            title: "No table selected",
+            description: "Please select a table before adding custom items.",
+        });
+        return;
+    }
     const customItem: MenuItem = {
       id: tempId(), // Use a temporary negative ID for custom items
       name: itemName,
