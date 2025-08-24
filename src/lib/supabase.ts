@@ -135,9 +135,10 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         }
         return fromSupabase(data);
     } else {
+        const { id, ...updatePayload } = payload;
         const { data, error } = await supabase
             .from('orders')
-            .update(payload)
+            .update(updatePayload)
             .eq('id', order.id)
             .select()
             .single();
@@ -207,11 +208,11 @@ export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User 
     return data as User;
 }
 
-export const signIn = async (username: string, password: string): Promise<User | null> => {
+export const signIn = async (login: string, password: string): Promise<User | null> => {
     const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('username', username)
+        .or(`username.eq.${login},email.eq.${login}`)
         .eq('password', password) // IMPORTANT: Storing plain text passwords is not secure. This is for demonstration only.
         .single();
 

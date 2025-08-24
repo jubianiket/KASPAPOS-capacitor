@@ -12,7 +12,7 @@ import { signIn } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function LoginPage() {
-    const [username, setUsername] = useState('');
+    const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        const user = await signIn(username, password);
+        const user = await signIn(login, password);
 
         if (user) {
             localStorage.setItem('user', JSON.stringify(user));
@@ -35,7 +35,7 @@ export default function LoginPage() {
             toast({
                 variant: 'destructive',
                 title: 'Login Failed',
-                description: 'Invalid username or password.',
+                description: 'Invalid credentials.',
             });
             setIsLoading(false);
         }
@@ -46,18 +46,18 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>Enter your username and password to access your account.</CardDescription>
+                    <CardDescription>Enter your username or email to access your account.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="login">Username or Email</Label>
                             <Input
-                                id="username"
+                                id="login"
                                 type="text"
-                                placeholder="john.doe"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="john.doe or john@example.com"
+                                value={login}
+                                onChange={(e) => setLogin(e.target.value)}
                                 required
                             />
                         </div>
