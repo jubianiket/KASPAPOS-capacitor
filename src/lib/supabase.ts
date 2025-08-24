@@ -48,7 +48,7 @@ const toSupabase = (order: Order) => {
 
     const payload: { [key: string]: any } = {
         date: order.created_at || new Date().toISOString(),
-        items: JSON.stringify(order.items), // Always stringify JSON for Supabase
+        items: order.items, 
         sub_total: subtotal,
         gst: tax,
         total: total,
@@ -133,7 +133,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     
     const { data, error } = await supabase
         .from('orders')
-        .upsert(payload, { onConflict: 'id' }) // Use 'id' for conflict resolution
+        .upsert([payload], { onConflict: 'id' }) // Use 'id' for conflict resolution and upsert requires an array
         .select()
         .single();
     
