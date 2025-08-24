@@ -112,7 +112,7 @@ export default function PaymentDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                     <Button onClick={handlePayment} disabled={!paymentMethod || isProcessing}>
-                        {isProcessing ? 'Processing...' : 'Confirm Payment'}
+                        {isProcessing ? 'Processing...' : `Confirm Payment - Rs.${total.toFixed(2)}`}
                     </Button>
                 </DialogFooter>
             </>

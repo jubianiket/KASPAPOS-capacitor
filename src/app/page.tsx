@@ -144,6 +144,16 @@ export default function Home() {
         }
     }
   }
+  
+  const markAsCompleted = async () => {
+      if (activeOrder && activeOrder.status === 'received') {
+          const completedOrderData = {
+              ...activeOrder,
+              status: 'completed' as const,
+          }
+          await updateAndSaveOrder(completedOrderData);
+      }
+  }
 
 
   const addToOrder = async (item: MenuItem) => {
@@ -241,10 +251,10 @@ export default function Home() {
     await updateAndSaveOrder({ ...activeOrder, items: []});
   };
 
-  const completeOrder = async (completedOrder: Order) => {
+  const completeOrderAndPay = async (completedOrder: Order) => {
     const updatedOrder = await saveOrder({
         ...completedOrder,
-        status: 'completed',
+        payment_status: 'paid',
     });
     
     if (updatedOrder) {
@@ -358,8 +368,9 @@ export default function Home() {
             onUpdateQuantity={updateQuantity}
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
-            onCompleteOrder={completeOrder}
+            onCompleteOrder={completeOrderAndPay}
             onConfirmOrder={confirmOrder}
+            onMarkAsCompleted={markAsCompleted}
             onAddToOrder={addToOrder}
           />
         </div>
