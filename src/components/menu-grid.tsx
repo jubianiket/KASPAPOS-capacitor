@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from 'react';
 import type { MenuItem } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MenuItemCard from './menu-item-card';
 import { getMenuItems } from '@/lib/supabase';
 import { Skeleton } from './ui/skeleton';
@@ -26,16 +25,9 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
     fetchMenuItems();
   }, []);
 
-  const categories = [...new Set(menuItems.map((item) => item.category))];
-
   if (isLoading) {
     return (
         <div>
-            <div className="flex space-x-1 rounded-lg bg-muted p-1 mb-4">
-                <Skeleton className="h-8 flex-1" />
-                <Skeleton className="h-8 flex-1" />
-                <Skeleton className="h-8 flex-1" />
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
                     <CardSkeleton key={i} />
@@ -45,27 +37,20 @@ export default function MenuGrid({ onAddToOrder }: MenuGridProps) {
     );
   }
 
-  return (
-    <Tabs defaultValue={categories[0]} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-4">
-        {categories.map((category) => (
-          <TabsTrigger key={category} value={category}>
-            {category}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {categories.map((category) => (
-        <TabsContent key={category} value={category}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {menuItems
-              .filter((item) => item.category === category)
-              .map((item) => (
-                <MenuItemCard key={item.id} item={item} onAddToOrder={onAddToOrder} />
-              ))}
+    if (menuItems.length === 0) {
+      return (
+          <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+              <p>No menu items available.</p>
           </div>
-        </TabsContent>
+      )
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {menuItems.map((item) => (
+        <MenuItemCard key={item.id} item={item} onAddToOrder={onAddToOrder} />
       ))}
-    </Tabs>
+    </div>
   );
 }
 
