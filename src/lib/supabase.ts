@@ -14,12 +14,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
     return {
-        ...order,
+        id: order.id,
         created_at: order.date,
+        items: order.items,
         subtotal: order.sub_total ?? 0,
-        total: order.total ?? 0,
         tax: order.gst ?? 0,
         discount: order.discount ?? 0,
+        total: order.total ?? 0,
+        payment_method: order.payment_method,
+        payment_status: order.payment_status,
+        order_type: order.order_type,
+        table_number: order.table_number,
+        status: order.status,
     }
 }
 
@@ -32,7 +38,12 @@ const toSupabase = (order: Partial<Order>) => {
     if (order.total !== undefined) payload.total = order.total;
     if (order.discount !== undefined) payload.discount = order.discount;
     if (order.order_type) payload.order_type = order.order_type;
-    if (order.table_number) payload.table_number = order.table_number;
+    
+    // Only include table_number if it's not null or undefined
+    if (order.table_number) {
+        payload.table_number = order.table_number;
+    }
+
     if (order.payment_method) {
       payload.payment_status = 'paid';
       payload.payment_method = order.payment_method;
@@ -68,7 +79,7 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['pending', 'confirmed', 'received', 'preparing', 'ready'])
+        .in('status', ['received', 'preparing', 'ready'])
         .order('date', { ascending: false });
 
     if (error) {
@@ -94,7 +105,7 @@ export const getCompletedOrders = async (): Promise<Order[]> => {
 
 export const createOrder = async (order: Omit<Order, 'id' | 'created_at'>): Promise<Order | null> => {
     const payload = toSupabase(order);
-
+    
     const { data, error } = await supabase
         .from('orders')
         .insert([payload])
@@ -138,4 +149,3 @@ export const deleteOrder = async (orderId: number): Promise<boolean> => {
     }
     return true;
 }
-

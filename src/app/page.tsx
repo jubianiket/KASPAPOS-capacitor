@@ -41,68 +41,21 @@ export default function Home() {
   }, [fetchOrders]);
 
   const occupiedTables = activeOrders
-    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed' && o.status !== 'pending')
+    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed')
     .map(o => o.table_number!);
 
   useEffect(() => {
-    const manageOrder = async () => {
-      const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
-      
-      if (currentOrderType === 'dine-in') {
-          if (tableNumber) {
-              const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
-              if (existingOrder) {
-                  setActiveOrder(existingOrder);
-              } else {
-                  let pendingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status === 'pending');
-                  if (!pendingOrder) {
-                      const newOrderData: Omit<Order, 'id' | 'created_at'> = {
-                          items: [],
-                          subtotal: 0,
-                          tax: 0,
-                          discount: 0,
-                          total: 0,
-                          order_type: 'dine-in',
-                          table_number: tableNumber,
-                          status: 'pending',
-                      };
-                      const newOrder = await createOrder(newOrderData);
-                      if(newOrder) {
-                        setActiveOrders(prev => [...prev, newOrder!]);
-                        pendingOrder = newOrder;
-                      }
-                  }
-                  setActiveOrder(pendingOrder);
-              }
-          } else {
-               setActiveOrder(null);
-          }
-      } else if (currentOrderType === 'delivery') {
-          let pendingDeliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.status === 'pending');
-          if (!pendingDeliveryOrder) {
-              const newOrderData: Omit<Order, 'id' | 'created_at'> = {
-                  items: [],
-                  subtotal: 0,
-                  tax: 0,
-                  discount: 0,
-                  total: 0,
-                  order_type: 'delivery',
-                  status: 'pending',
-              };
-              const newOrder = await createOrder(newOrderData);
-              if (newOrder) {
-                setActiveOrders(prev => [...prev, newOrder!]);
-                pendingDeliveryOrder = newOrder;
-              }
-          }
-           setActiveOrder(pendingDeliveryOrder);
-      } else {
-        setActiveOrder(null);
-      }
-    };
+    const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     
-    manageOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (currentOrderType === 'dine-in' && tableNumber) {
+        const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
+        setActiveOrder(existingOrder || null);
+    } else if (currentOrderType === 'delivery') {
+        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && !o.table_number && o.status !== 'completed');
+        setActiveOrder(deliveryOrder || null);
+    } else {
+      setActiveOrder(null);
+    }
   }, [tableNumber, orderType, activeOrders]);
   
   const handleSelectOrder = (orderId: number) => {
@@ -119,51 +72,70 @@ export default function Home() {
     }
   }
 
-  const updateOrderItems = async (newItems: OrderItem[]) => {
-    if (!activeOrder) return;
+  const updateOrderItems = async (orderId: number, newItems: OrderItem[]) => {
+      const orderToUpdate = activeOrders.find(o => o.id === orderId);
+      if (!orderToUpdate) return;
+      
+      const oldOrder = { ...orderToUpdate };
+      
+      // Optimistic update
+      const updatedOrder = { ...orderToUpdate, items: newItems };
+      setActiveOrder(updatedOrder);
+      setActiveOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+      
+      // DB update
+      const result = await updateOrder(orderId, { items: newItems });
+      if (!result) {
+          // Revert on failure
+          setActiveOrder(oldOrder);
+          setActiveOrders(prev => prev.map(o => o.id === orderId ? oldOrder : o));
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order.' });
+      }
+  }
 
-    // Optimistic update
-    const oldOrder = activeOrder;
-    const newActiveOrder = { ...activeOrder, items: newItems };
-    setActiveOrder(newActiveOrder);
-    
-    // Update in activeOrders list
-    const updatedActiveOrders = activeOrders.map(o => o.id === newActiveOrder.id ? newActiveOrder : o);
-    setActiveOrders(updatedActiveOrders);
-    
-    // DB update
-    const updatedOrder = await updateOrder(activeOrder.id, { items: newItems });
-    if (!updatedOrder) {
-        // Revert on failure
-        setActiveOrder(oldOrder);
-        setActiveOrders(activeOrders.map(o => o.id === oldOrder.id ? oldOrder : o));
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update order.' });
-    }
-  };
 
-  const addToOrder = (item: MenuItem) => {
-    if (!activeOrder) {
+  const addToOrder = async (item: MenuItem) => {
+    const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
+    if (currentOrderType === 'dine-in' && !tableNumber) {
         toast({
             variant: "destructive",
-            title: "No order selected",
-            description: "Please select a table for Dine-In orders or switch to Delivery.",
+            title: "No table selected",
+            description: "Please select a table before adding items.",
         });
         return;
     }
 
-    const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
-    let newItems: OrderItem[];
+    if (activeOrder) {
+      const existingItem = activeOrder.items.find((orderItem) => orderItem.id === item.id);
+      let newItems: OrderItem[];
 
-    if (existingItem) {
-      newItems = activeOrder.items.map((orderItem) =>
-        orderItem.id === item.id
-          ? { ...orderItem, quantity: orderItem.quantity + 1 }
-          : orderItem
-      );
+      if (existingItem) {
+        newItems = activeOrder.items.map((orderItem) =>
+          orderItem.id === item.id
+            ? { ...orderItem, quantity: orderItem.quantity + 1 }
+            : orderItem
+        );
+      } else {
+        newItems = [...activeOrder.items, { ...item, quantity: 1, rate: item.rate }];
+      }
+      await updateOrderItems(activeOrder.id, newItems);
     } else {
-      newItems = [...activeOrder.items, { ...item, quantity: 1, rate: item.rate }];
+      // Create a new order
+      const newOrderData: Omit<Order, 'id' | 'created_at'> = {
+          items: [{ ...item, quantity: 1, rate: item.rate }],
+          subtotal: 0, tax: 0, discount: 0, total: 0,
+          order_type: currentOrderType,
+          table_number: tableNumber,
+          status: 'received',
+      };
+      const newOrder = await createOrder(newOrderData);
+      if(newOrder) {
+        setActiveOrders(prev => [...prev, newOrder]);
+        setActiveOrder(newOrder);
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create order.' });
+      }
     }
-    updateOrderItems(newItems);
   };
 
   const updateQuantity = (itemId: number, quantity: number) => {
@@ -174,63 +146,36 @@ export default function Home() {
        const newItems = activeOrder.items.map((item) =>
           item.id === itemId ? { ...item, quantity } : item
         );
-       updateOrderItems(newItems);
+       updateOrderItems(activeOrder.id, newItems);
     }
   };
 
   const removeFromOrder = (itemId: number) => {
     if (!activeOrder) return;
     const newItems = activeOrder.items.filter((item) => item.id !== itemId);
-    updateOrderItems(newItems);
+    updateOrderItems(activeOrder.id, newItems);
   };
 
   const clearOrder = async () => {
     if(!activeOrder) return;
-    
-    if(activeOrder.status === 'confirmed' || activeOrder.status === 'received' || activeOrder.status === 'preparing' || activeOrder.status === 'ready') {
-        updateOrderItems([]);
+
+    // A confirmed order should be emptied, not deleted.
+    if(activeOrder.status !== 'completed' && activeOrder.items.length > 0) {
+        await updateOrderItems(activeOrder.id, []);
         return;
     }
 
-    // Pending orders are deleted
-    if(activeOrder.status === 'pending') {
-        const success = await deleteOrder(activeOrder.id);
-        if (success) {
-            setActiveOrders(prev => prev.filter(o => o.id !== activeOrder!.id));
-            if(activeOrder.order_type === 'dine-in') {
-                setTableNumber(null);
-            }
-            setActiveOrder(null);
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear order.' });
+    // No items in order, safe to delete
+    const success = await deleteOrder(activeOrder.id);
+    if (success) {
+        const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
+        setActiveOrders(newActiveOrders);
+        setActiveOrder(null);
+        if(activeOrder.order_type === 'dine-in') {
+          setTableNumber(null);
         }
-    }
-  };
-
-  const confirmOrder = async (confirmedOrder: Order) => {
-    const updatedOrder = await updateOrder(confirmedOrder.id, { 
-        status: 'received', 
-        subtotal: confirmedOrder.subtotal,
-        tax: confirmedOrder.tax,
-        total: confirmedOrder.total,
-        items: confirmedOrder.items
-    });
-
-    if (updatedOrder) {
-        const updatedActiveOrders = activeOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-        setActiveOrders(updatedActiveOrders);
-        setActiveOrder(updatedOrder);
-        
-        const toastTitle = (updatedOrder.order_type === 'dine-in')
-            ? `Order for Table ${updatedOrder.table_number} Confirmed`
-            : 'Delivery Order Confirmed';
-
-        toast({
-          title: toastTitle,
-          description: 'You can now add more items or proceed to payment.',
-        });
     } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to confirm order.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear order.' });
     }
   };
 
@@ -246,14 +191,11 @@ export default function Home() {
     if (updatedOrder) {
         // Remove from active orders
         setActiveOrders(activeOrders.filter(o => o.id !== completedOrder.id));
+        setActiveOrder(null);
         
         // Reset the UI based on order type
         if(completedOrder.order_type === 'dine-in') {
-            setActiveOrder(null);
             setTableNumber(null);
-        } else {
-            setActiveOrder(null); // This will trigger useEffect to create a new one
-            setOrderType('Delivery'); // Force re-evaluation
         }
 
         toast({
@@ -267,21 +209,8 @@ export default function Home() {
     }
   };
   
-  const handleOrderTypeChange = async (value: 'Dine In' | 'Delivery') => {
+  const handleOrderTypeChange = (value: 'Dine In' | 'Delivery') => {
       if(value) {
-        if(activeOrder && activeOrder.items.length > 0 && activeOrder.status === 'pending') {
-            const switchConfirmed = confirm("You have a pending order with items. Do you want to discard it and switch?");
-            if(!switchConfirmed) return;
-
-             // Remove the pending order from active orders
-            const success = await deleteOrder(activeOrder.id);
-            if (success) {
-                setActiveOrders(prev => prev.filter(o => o.id !== activeOrder.id));
-            } else {
-                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to discard pending order.' });
-                 return;
-            }
-        }
         setOrderType(value);
         setTableNumber(null);
         setActiveOrder(null);
@@ -315,10 +244,10 @@ export default function Home() {
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-            {isClient && !isLoading && activeOrders.filter(o => o.status !== 'pending' && o.status !== 'completed').length > 0 && (
+            {isClient && !isLoading && activeOrders.length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
-                        orders={activeOrders.filter(o => o.status !== 'pending' && o.status !== 'completed')} 
+                        orders={activeOrders} 
                         onSelectOrder={handleSelectOrder}
                         activeOrderId={activeOrder?.id}
                    />
@@ -372,7 +301,6 @@ export default function Home() {
             onUpdateQuantity={updateQuantity}
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
-            onConfirmOrder={confirmOrder}
             onCompleteOrder={completeOrder}
             onAddToOrder={addToOrder}
           />

@@ -22,7 +22,8 @@ export interface Order {
   discount: number;
   total: number;
   payment_method?: 'Cash' | 'Card' | 'Mobile';
+  payment_status?: 'paid' | 'unpaid';
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
-  status: 'pending' | 'confirmed' | 'completed' | 'received' | 'preparing' | 'ready';
+  status: 'received' | 'preparing' | 'ready' | 'completed';
 }

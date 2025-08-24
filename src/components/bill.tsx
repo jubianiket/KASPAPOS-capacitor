@@ -18,7 +18,6 @@ interface BillProps {
   onUpdateQuantity: (itemId: number, quantity: number) => void;
   onRemoveItem: (itemId: number) => void;
   onClearOrder: () => void;
-  onConfirmOrder: (order: Order) => void;
   onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
   onAddToOrder: (item: MenuItem) => void;
 }
@@ -28,9 +27,7 @@ export default function Bill({
   onUpdateQuantity,
   onRemoveItem,
   onClearOrder,
-  onConfirmOrder,
   onCompleteOrder,
-  onAddToOrder,
 }: BillProps) {
   
   const orderItems = order?.items ?? [];
@@ -43,18 +40,6 @@ export default function Bill({
   }, [orderItems, order?.discount]);
 
   const { subtotal, tax, total } = calculations;
-
-  const handleConfirmOrder = () => {
-    if(order) {
-        const orderToConfirm: Order = {
-            ...order,
-            subtotal,
-            tax,
-            total,
-        };
-        onConfirmOrder(orderToConfirm);
-    }
-  }
 
   const handleCompleteOrder = async (paymentMethod: NonNullable<Order['payment_method']>) => {
     if (order) {
@@ -78,8 +63,7 @@ export default function Bill({
 
   const isPaymentDisabled = () => {
     if (!order) return true;
-    const readyForPaymentStatuses: Order['status'][] = ['confirmed', 'ready', 'received'];
-    return !readyForPaymentStatuses.includes(order.status);
+    return order.items.length === 0;
   }
 
   return (
@@ -167,11 +151,6 @@ export default function Bill({
       </CardContent>
       {orderItems.length > 0 && (
         <CardFooter className="flex flex-col gap-2">
-           {order?.status === 'pending' && (
-              <Button onClick={handleConfirmOrder} className="w-full">
-                Confirm Order
-              </Button>
-            )}
           <PaymentDialog 
             order={order} 
             total={total} 
