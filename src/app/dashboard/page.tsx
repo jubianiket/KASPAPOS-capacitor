@@ -2,27 +2,38 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Order } from '@/types';
+import type { Order, User } from '@/types';
 import { getCompletedOrders } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, BarChart, Users } from 'lucide-react';
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { PopularCategoriesChart } from '@/components/dashboard/popular-categories-chart';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
-        const fetchOrders = async () => {
+        const fetchOrders = async (restaurantId: number) => {
             setIsLoading(true);
-            const completedOrders = await getCompletedOrders();
+            const completedOrders = await getCompletedOrders(restaurantId);
             setOrders(completedOrders);
             setIsLoading(false);
         };
-        fetchOrders();
-    }, []);
+        
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user: User = JSON.parse(userStr);
+            if (user.restaurant_id) {
+                fetchOrders(user.restaurant_id);
+            }
+        } else {
+            router.replace('/login');
+        }
+    }, [router]);
 
     const stats = useMemo(() => {
         const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);

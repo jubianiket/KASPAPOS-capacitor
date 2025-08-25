@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { MenuItem, GroupedMenuItem } from '@/types';
+import type { MenuItem, GroupedMenuItem, User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,7 @@ import { useData } from '@/hooks/use-data';
 export default function MenuPage() {
   const { menuItems, isMenuLoading, onRefreshMenu } = useData();
   const [isClient, setIsClient] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -82,7 +82,8 @@ export default function MenuPage() {
   }
   
   const handleDeleteItem = async (itemId: number) => {
-      const success = await deleteMenuItem(itemId);
+      if (!user?.restaurant_id) return;
+      const success = await deleteMenuItem(itemId, user.restaurant_id);
       if(success) {
           toast({ title: "Success", description: "Menu item deleted successfully."});
           onRefreshMenu();
@@ -92,9 +93,19 @@ export default function MenuPage() {
   }
 
   const handleFormSubmit = async (values: Partial<MenuItem>) => {
+    if (!user?.restaurant_id) return;
     const isEditing = !!editingItem;
-    const action = isEditing ? updateMenuItem : addMenuItem;
-    const result = isEditing ? await action(editingItem.id, values) : await action(values);
+
+    let result;
+    if (isEditing) {
+        result = await updateMenuItem(editingItem.id, user.restaurant_id, values);
+    } else {
+        const itemToAdd = {
+            ...values,
+            restaurant_id: user.restaurant_id
+        }
+        result = await addMenuItem(itemToAdd);
+    }
 
     if (result) {
         toast({ title: "Success", description: `Menu item ${isEditing ? 'updated' : 'added'} successfully.` });

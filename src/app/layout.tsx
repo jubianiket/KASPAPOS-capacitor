@@ -7,49 +7,48 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
-import type { RestaurantSettings } from '@/types';
+import type { Restaurant } from '@/types';
 import { getSettings } from '@/lib/supabase';
 import { DataProvider } from '@/hooks/use-data';
-
-// This component can't be a server component because we need to fetch settings
-// and apply them dynamically, which requires client-side logic.
-// export const metadata: Metadata = {
-//   title: 'KASPA POS',
-//   description: 'A modern Point of Sale for restaurants',
-//   icons: {
-//     icon: [],
-//   },
-// };
+import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
-  const applySettings = (settingsToApply: RestaurantSettings | null) => {
-    if (settingsToApply) {
-        setSettings(settingsToApply);
-        document.documentElement.classList.toggle('dark', !!settingsToApply.dark_mode);
-        if (settingsToApply.theme_color) {
-            document.documentElement.style.setProperty('--primary', settingsToApply.theme_color);
-        }
-         if (settingsToApply.restaurant_name) {
-            document.title = `${settingsToApply.restaurant_name} | KASPA POS`;
-        }
-      }
-  }
-  
   useEffect(() => {
+    const applySettings = (settingsToApply: Restaurant | null) => {
+        if (settingsToApply) {
+            setSettings(settingsToApply);
+            document.documentElement.classList.toggle('dark', !!settingsToApply.dark_mode);
+            if (settingsToApply.theme_color) {
+                document.documentElement.style.setProperty('--primary', settingsToApply.theme_color);
+            }
+             if (settingsToApply.restaurant_name) {
+                document.title = `${settingsToApply.restaurant_name} | KASPA POS`;
+            }
+          }
+    }
+    
     const initializeSettings = async () => {
-        const fetchedSettings = await getSettings();
-        applySettings(fetchedSettings);
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return;
+        const user = JSON.parse(userStr);
+
+        if (user?.restaurant_id) {
+            const fetchedSettings = await getSettings(user.restaurant_id);
+            applySettings(fetchedSettings);
+        }
     };
     
+    // Re-initialize settings when path changes, e.g. after login
     initializeSettings();
-  }, []);
+  }, [pathname]);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -76,5 +75,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

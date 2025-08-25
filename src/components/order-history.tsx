@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import type { Order } from '@/types';
+import type { Order, User } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Ticket, Calendar, Clock, Utensils, Bike, ChevronDown } from 'lucide-react';
 import { Separator } from './ui/separator';
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 function OrderHistoryCard({ order }: { order: Order }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -100,16 +101,26 @@ function OrderHistoryCard({ order }: { order: Order }) {
 export default function OrderHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrders = async (restaurantId: number) => {
       setIsLoading(true);
-      const completedOrders = await getCompletedOrders();
+      const completedOrders = await getCompletedOrders(restaurantId);
       setOrders(completedOrders);
       setIsLoading(false);
     };
-    fetchOrders();
-  }, []);
+
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        const user: User = JSON.parse(userStr);
+        if(user.restaurant_id) {
+            fetchOrders(user.restaurant_id);
+        }
+    } else {
+        router.replace('/login');
+    }
+  }, [router]);
 
   if (isLoading) {
       return (

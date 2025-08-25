@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { RestaurantSettings } from '@/types';
+import type { Restaurant, User } from '@/types';
 import { getSettings, updateSettings } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -37,7 +37,8 @@ const settingsSchema = z.object({
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -76,9 +77,11 @@ export default function SettingsPage() {
     if (!storedUser) {
       router.replace('/login');
     } else {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
       const fetchSettings = async () => {
         setIsLoading(true);
-        const fetchedSettings = await getSettings();
+        const fetchedSettings = await getSettings(parsedUser.restaurant_id);
         if (fetchedSettings) {
           setSettings(fetchedSettings);
           reset({
@@ -93,12 +96,13 @@ export default function SettingsPage() {
   }, [router, reset]);
 
   const onSubmit = async (data: SettingsFormData) => {
-    const settingsToSave: RestaurantSettings = {
-      ...(settings || { id: 1 }), // Ensure ID is present
+    if (!user?.restaurant_id) return;
+
+    const settingsToSave: Partial<Restaurant> = {
       ...data,
     };
     
-    const updated = await updateSettings(settingsToSave);
+    const updated = await updateSettings(user.restaurant_id, settingsToSave);
     if (updated) {
       setSettings(updated);
       reset(updated); // Re-sync form with new data
@@ -337,5 +341,3 @@ const SettingsSkeleton = () => (
         </Card>
     </div>
 );
-
-    

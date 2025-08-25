@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Order, MenuItem, KitchenOrder, User, RestaurantSettings } from '@/types';
+import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -29,6 +29,7 @@ const fromSupabase = (order: any): Order => {
         flat_no: order.flat_no,
         building_no: order.building_no,
         address: order.address,
+        restaurant_id: order.restaurant_id,
     }
 }
 
@@ -50,6 +51,7 @@ const toSupabase = (order: Order) => {
         flat_no: order.flat_no,
         building_no: order.building_no,
         address: order.address,
+        restaurant_id: order.restaurant_id
     };
     
     // Do not include id for insert operations
@@ -61,11 +63,11 @@ const toSupabase = (order: Order) => {
 }
 
 
-export const getMenuItems = async (): Promise<MenuItem[]> => {
+export const getMenuItems = async (restaurantId: number): Promise<MenuItem[]> => {
     const { data, error } = await supabase
         .from('menu_items')
         .select('*')
-        .neq('is_active', false)
+        .eq('restaurant_id', restaurantId)
         .order('name');
         
     if (error) {
@@ -88,11 +90,11 @@ export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | n
     return data as MenuItem;
 }
 
-export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
+export const updateMenuItem = async (itemId: number, restaurantId: number, updates: Partial<MenuItem>): Promise<MenuItem | null> => {
     const { data, error } = await supabase
         .from('menu_items')
         .update(updates)
-        .eq('id', itemId)
+        .match({ id: itemId, restaurant_id: restaurantId })
         .select()
         .single();
 
@@ -103,11 +105,11 @@ export const updateMenuItem = async (itemId: number, updates: Partial<MenuItem>)
     return data as MenuItem;
 }
 
-export const deleteMenuItem = async (itemId: number): Promise<boolean> => {
+export const deleteMenuItem = async (itemId: number, restaurantId: number): Promise<boolean> => {
     const { error } = await supabase
         .from('menu_items')
         .delete()
-        .eq('id', itemId);
+        .match({ id: itemId, restaurant_id: restaurantId });
     if (error) {
         console.error("Error deleting menu item:", error);
         return false;
@@ -116,10 +118,11 @@ export const deleteMenuItem = async (itemId: number): Promise<boolean> => {
 }
 
 
-export const getActiveOrders = async (): Promise<Order[]> => {
+export const getActiveOrders = async (restaurantId: number): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .neq('payment_status', 'paid') 
         .order('date', { ascending: false });
 
@@ -130,10 +133,11 @@ export const getActiveOrders = async (): Promise<Order[]> => {
     return (data as any[]).map(fromSupabase);
 };
 
-export const getCompletedOrders = async (): Promise<Order[]> => {
+export const getCompletedOrders = async (restaurantId: number): Promise<Order[]> => {
     const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .eq('payment_status', 'paid') 
         .order('date', { ascending: false }); 
     
@@ -171,7 +175,7 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
         const { data, error } = await supabase
             .from('orders')
             .update(payload)
-            .eq('id', order.id)
+            .match({ id: order.id, restaurant_id: order.restaurant_id })
             .select()
             .single();
 
@@ -183,11 +187,11 @@ export const saveOrder = async (order: Order): Promise<Order | null> => {
     }
 };
 
-export const deleteOrder = async (orderId: number): Promise<boolean> => {
+export const deleteOrder = async (orderId: number, restaurantId: number): Promise<boolean> => {
     const { error } = await supabase
         .from('orders')
         .delete()
-        .eq('id', orderId);
+        .match({ id: orderId, restaurant_id: restaurantId });
     
     if (error) {
         console.error("Error deleting order:", error);
@@ -207,7 +211,8 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
         items: order.items,
         order_type: order.order_type,
         table_number: order.table_number,
-        status: 'preparing'
+        status: 'preparing',
+        restaurant_id: order.restaurant_id,
     }
 
     const { data, error } = await supabase
@@ -224,20 +229,40 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     return data as KitchenOrder;
 }
 
-// --- User Authentication ---
+// --- User Authentication & Restaurant Management ---
 
-export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User | null> => {
-    const { data, error } = await supabase
-        .from('users')
-        .insert({ ...userData, role: 'staff' }) // Default role
+export const signUp = async (userData: Omit<User, 'id' | 'role' | 'restaurant_id'>): Promise<User | null> => {
+    // 1. Create a new restaurant for the user
+    const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .insert({ restaurant_name: `${userData.name}'s Restaurant` })
         .select()
         .single();
 
-    if (error) {
-        console.error("Error signing up:", error);
+    if (restaurantError || !restaurantData) {
+        console.error("Error creating restaurant:", restaurantError);
         return null;
     }
-    return data as User;
+
+    // 2. Create the new user and link them to the new restaurant
+    const { data: newUserData, error: userError } = await supabase
+        .from('users')
+        .insert({
+            ...userData,
+            role: 'admin', // First user is the admin
+            restaurant_id: restaurantData.id,
+        })
+        .select()
+        .single();
+    
+    if (userError) {
+        console.error("Error signing up:", userError);
+        // Attempt to clean up the created restaurant if user creation fails
+        await supabase.from('restaurants').delete().eq('id', restaurantData.id);
+        return null;
+    }
+
+    return newUserData as User;
 }
 
 export const signIn = async (login: string, password: string): Promise<User | null> => {
@@ -257,33 +282,33 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 
 // --- Restaurant Settings ---
 
-export const getSettings = async (): Promise<RestaurantSettings | null> => {
+export const getSettings = async (restaurantId: number): Promise<Restaurant | null> => {
     const { data, error } = await supabase
-        .from('restaurant_settings')
+        .from('restaurants')
         .select('*')
-        .eq('id', 1)
+        .eq('id', restaurantId)
         .single();
     
-    if(error && error.code !== 'PGRST116') { // PGRST116: "exact one row not found"
+    if(error) {
         console.error("Error fetching settings:", error);
         return null;
     }
     
-    return data as RestaurantSettings | null;
+    return data as Restaurant | null;
 }
 
 
-export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
+export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
     const { id, ...updateData } = settings;
     
-    // Clean the data to remove any undefined values which can cause issues with upsert
     const cleanedUpdateData = Object.fromEntries(
         Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
     );
 
     const { data, error } = await supabase
-        .from('restaurant_settings')
-        .upsert({ ...cleanedUpdateData, id: 1 })
+        .from('restaurants')
+        .update(cleanedUpdateData)
+        .eq('id', restaurantId)
         .select()
         .single();
     
@@ -292,5 +317,5 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
         return null;
     }
     
-    return data as RestaurantSettings | null;
+    return data as Restaurant | null;
 }

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
-import type { OrderItem, MenuItem, Order, User, RestaurantSettings, GroupedMenuItem } from '@/types';
+import type { OrderItem, MenuItem, Order, User, Restaurant } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike } from 'lucide-react';
@@ -27,7 +27,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
 
   const router = useRouter();
@@ -43,11 +43,11 @@ export default function Home() {
   }, [allMenuItems]);
 
 
-  const fetchInitialData = useCallback(async () => {
+  const fetchInitialData = useCallback(async (restaurantId: number) => {
       setIsLoading(true);
       const [orders, fetchedSettings] = await Promise.all([
-          getActiveOrders(),
-          getSettings(),
+          getActiveOrders(restaurantId),
+          getSettings(restaurantId),
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
@@ -63,7 +63,9 @@ export default function Home() {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsClient(true);
-        fetchInitialData();
+        if (parsedUser.restaurant_id) {
+          fetchInitialData(parsedUser.restaurant_id);
+        }
     }
   }, [router, fetchInitialData]);
   
@@ -199,6 +201,7 @@ export default function Home() {
 
 
   const addToOrder = async (item: MenuItem, portion: string) => {
+    if (!user?.restaurant_id) return;
     const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     if (currentOrderType === 'dine-in' && !tableNumber) {
         toast({
@@ -247,6 +250,7 @@ export default function Home() {
           table_number: currentOrderType === 'dine-in' ? tableNumber : null,
           status: 'pending', // Start as pending
           created_at: new Date().toISOString(),
+          restaurant_id: user.restaurant_id
       };
     }
     
@@ -279,6 +283,7 @@ export default function Home() {
   };
   
     const addCustomItemToOrder = (itemName: string, itemRate: number) => {
+    if (!user?.restaurant_id) return;
     const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     if (currentOrderType === 'dine-in' && !tableNumber) {
         toast({
@@ -296,6 +301,7 @@ export default function Home() {
       portion: 'Custom',
       is_active: true,
       available: true,
+      restaurant_id: user.restaurant_id,
     };
     addToOrder(customItem, 'Custom');
   };
@@ -323,7 +329,7 @@ export default function Home() {
   };
 
   const clearOrder = async () => {
-    if(!activeOrder) return;
+    if(!activeOrder || !user?.restaurant_id) return;
 
     // If order is pending and not saved, just clear it from local state
     if (activeOrder.status === 'pending') {
@@ -334,7 +340,7 @@ export default function Home() {
 
     // This handles clearing a confirmed order (e.g. customer cancels)
     if(activeOrder.id > 0) {
-      const success = await deleteOrder(activeOrder.id);
+      const success = await deleteOrder(activeOrder.id, user.restaurant_id);
       if (success) {
           const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
           setActiveOrders(newActiveOrders);
@@ -394,7 +400,9 @@ export default function Home() {
     setActiveOrder(null);
     setTableNumber(null);
     setOrderType('Dine In');
-    fetchInitialData();
+    if (user?.restaurant_id) {
+      fetchInitialData(user.restaurant_id);
+    }
   };
   
   if (!isClient) {
@@ -517,5 +525,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

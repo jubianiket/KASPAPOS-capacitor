@@ -2,8 +2,9 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
-import type { MenuItem } from '@/types';
+import type { MenuItem, User } from '@/types';
 import { getMenuItems } from '@/lib/supabase';
+import { usePathname } from 'next/navigation';
 
 interface DataContextProps {
   menuItems: MenuItem[];
@@ -16,11 +17,27 @@ const DataContext = createContext<DataContextProps | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isMenuLoading, setIsMenuLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    } else {
+      setUser(null);
+    }
+  }, [pathname]);
 
   const fetchMenu = useCallback(async () => {
+    if (!user?.restaurant_id) {
+        setMenuItems([]);
+        setIsMenuLoading(false);
+        return;
+    }
     setIsMenuLoading(true);
     try {
-        const items = await getMenuItems();
+        const items = await getMenuItems(user.restaurant_id);
         setMenuItems(items);
     } catch (error) {
         console.error("Failed to fetch menu items:", error);
@@ -28,7 +45,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
         setIsMenuLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchMenu();

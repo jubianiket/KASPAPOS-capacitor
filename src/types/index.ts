@@ -8,6 +8,7 @@ export interface MenuItem {
   available?: boolean;
   portion?: string;
   is_active?: boolean;
+  restaurant_id: number;
 }
 
 export interface GroupedMenuItem {
@@ -38,6 +39,7 @@ export interface Order {
   flat_no?: string;
   building_no?: string;
   address?: string;
+  restaurant_id: number;
 }
 
 export interface KitchenOrder {
@@ -48,6 +50,7 @@ export interface KitchenOrder {
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
   status: 'preparing' | 'ready';
+  restaurant_id: number;
 }
 
 export interface User {
@@ -58,9 +61,10 @@ export interface User {
     name: string;
     phone: number;
     email: string;
+    restaurant_id: number;
 }
 
-export interface RestaurantSettings {
+export interface Restaurant {
     id: number;
     restaurant_name: string;
     address?: string | null;
@@ -76,5 +80,3 @@ export interface RestaurantSettings {
     cgst?: number;
     table_count?: number;
 }
-
-    
