@@ -15,17 +15,13 @@ import ActiveOrders from '@/components/active-orders';
 import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
+import { useData } from '@/hooks/use-data';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
 
-// Props are passed from RootLayout now
-interface HomeProps {
-  menuItems: MenuItem[];
-  isMenuLoading: boolean;
-}
-
-export default function Home({ menuItems, isMenuLoading }: HomeProps) {
+export default function Home() {
+  const { menuItems, isMenuLoading } = useData();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -513,7 +509,3 @@ export default function Home({ menuItems, isMenuLoading }: HomeProps) {
     </div>
   );
 }
-
-    
-
-    

@@ -9,6 +9,7 @@ import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
 import { getSettings, getMenuItems } from '@/lib/supabase';
 import type { RestaurantSettings, MenuItem } from '@/types';
+import { DataProvider } from '@/hooks/use-data';
 
 // This component can't be a server component because we need to fetch settings
 // and apply them dynamically, which requires client-side logic.
@@ -62,19 +63,6 @@ export default function RootLayout({
     fetchAndApplySettings();
   }, []);
 
-  // Clone element is necessary to pass server-fetched data to client components.
-  // This pattern is common for this type of architecture (client-side data fetching at root)
-  const childrenWithProps = React.Children.map(children, child => {
-      if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement, { 
-              menuItems, 
-              isMenuLoading,
-              onRefreshMenu: fetchMenu 
-          });
-      }
-      return child;
-  });
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -86,14 +74,22 @@ export default function RootLayout({
         ></link>
       </head>
       <body className="font-body antialiased">
-        <Sidebar isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <div className="flex flex-col min-h-screen">
-          <Header onMenuClick={() => setIsSidebarOpen(true)} />
-          <main className="flex-grow">
-            {childrenWithProps}
-          </main>
-        </div>
-        <Toaster />
+        <DataProvider
+          value={{
+            menuItems,
+            isMenuLoading,
+            onRefreshMenu: fetchMenu,
+          }}
+        >
+          <div className="flex flex-col min-h-screen">
+            <Sidebar isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
+            <Header onMenuClick={() => setIsSidebarOpen(true)} />
+            <main className="flex-grow">
+              {children}
+            </main>
+          </div>
+          <Toaster />
+        </DataProvider>
       </body>
     </html>
   );

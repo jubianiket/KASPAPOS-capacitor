@@ -7,17 +7,17 @@ import type { MenuItem, GroupedMenuItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
+import { addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import MenuManagementGrid from '@/components/menu-management-grid';
 import MenuItemFormDialog from '@/components/menu-item-form-dialog';
+import { useData } from '@/hooks/use-data';
 
 export default function MenuPage() {
+  const { menuItems, isMenuLoading, onRefreshMenu } = useData();
   const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState(null);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [isMenuLoading, setIsMenuLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -26,23 +26,15 @@ export default function MenuPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const fetchMenu = useCallback(async () => {
-    setIsMenuLoading(true);
-    const items = await getMenuItems();
-    setMenuItems(items);
-    setIsMenuLoading(false);
-  }, []);
-
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       router.replace('/login');
     } else {
       setUser(JSON.parse(storedUser));
-      fetchMenu();
       setIsClient(true);
     }
-  }, [router, fetchMenu]);
+  }, [router]);
   
   useEffect(() => {
     if (menuItems && menuItems.length > 0) {
@@ -90,7 +82,7 @@ export default function MenuPage() {
       const success = await deleteMenuItem(itemId);
       if(success) {
           toast({ title: "Success", description: "Menu item deleted successfully."});
-          fetchMenu();
+          onRefreshMenu();
       } else {
           toast({ variant: 'destructive', title: "Error", description: "Failed to delete menu item."});
       }
@@ -103,7 +95,7 @@ export default function MenuPage() {
 
     if (result) {
         toast({ title: "Success", description: `Menu item ${isEditing ? 'updated' : 'added'} successfully.` });
-        fetchMenu();
+        onRefreshMenu();
         setIsFormOpen(false);
         setEditingItem(null);
     } else {
