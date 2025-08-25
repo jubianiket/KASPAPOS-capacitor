@@ -52,8 +52,10 @@ export default function Home({ menuItems, isMenuLoading }: HomeProps) {
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
       
-      const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
-      setCategories(uniqueCategories);
+      if (menuItems && menuItems.length > 0) {
+        const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
+        setCategories(uniqueCategories);
+      }
 
       setIsLoading(false);
   }, [menuItems]);
@@ -71,7 +73,7 @@ export default function Home({ menuItems, isMenuLoading }: HomeProps) {
   }, [router, fetchInitialData]);
   
   useEffect(() => {
-      if(menuItems.length > 0) {
+      if (menuItems && menuItems.length > 0) {
         const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
         setCategories(uniqueCategories);
       }
@@ -511,3 +513,5 @@ export default function Home({ menuItems, isMenuLoading }: HomeProps) {
     </div>
   );
 }
+
+    
