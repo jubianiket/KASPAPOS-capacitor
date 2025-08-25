@@ -12,7 +12,7 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings, getMenuItems } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
@@ -21,7 +21,7 @@ import { useData } from '@/hooks/use-data';
 const tempId = () => -Math.floor(Math.random() * 1000000);
 
 export default function Home() {
-  const { menuItems, isMenuLoading } = useData();
+  const { menuItems, isMenuLoading, onRefreshMenu } = useData();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -48,13 +48,10 @@ export default function Home() {
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
       
-      if (menuItems && menuItems.length > 0) {
-        const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
-        setCategories(uniqueCategories);
-      }
+      await onRefreshMenu(); // Fetch menu items
 
       setIsLoading(false);
-  }, [menuItems]);
+  }, [onRefreshMenu]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -72,8 +69,11 @@ export default function Home() {
       if (menuItems && menuItems.length > 0) {
         const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
         setCategories(uniqueCategories);
+        if (uniqueCategories.length > 0 && !uniqueCategories.includes(selectedCategory)) {
+          setSelectedCategory('All');
+        }
       }
-  }, [menuItems]);
+  }, [menuItems, selectedCategory]);
 
 
   const occupiedTables = activeOrders
@@ -393,7 +393,7 @@ export default function Home() {
     fetchInitialData();
   };
   
-  if (!isClient || !user) {
+  if (!isClient) {
     return (
         <div className="flex justify-center items-center h-screen">
              <div className="text-center">

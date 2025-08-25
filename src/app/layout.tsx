@@ -59,20 +59,11 @@ export default function RootLayout({
             applySettings(JSON.parse(cachedSettings));
         }
 
-        // Then, fetch the latest settings and menu from the database
-        const [fetchedSettings, items] = await Promise.all([
-            getSettings(),
-            getMenuItems()
-        ]);
-        
+        // Then, fetch the latest settings from the database
+        const fetchedSettings = await getSettings();
         applySettings(fetchedSettings);
-        setMenuItems(items);
-        setIsMenuLoading(false);
 
-        // Cache the latest settings from DB
-        if(fetchedSettings) {
-            localStorage.setItem('restaurant_settings', JSON.stringify(fetchedSettings));
-        }
+        // Menu will be fetched by individual pages
     };
     
     initializeApp();

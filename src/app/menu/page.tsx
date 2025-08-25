@@ -33,15 +33,20 @@ export default function MenuPage() {
     } else {
       setUser(JSON.parse(storedUser));
       setIsClient(true);
+      // Fetch menu when component mounts
+      onRefreshMenu();
     }
-  }, [router]);
+  }, [router, onRefreshMenu]);
   
   useEffect(() => {
     if (menuItems && menuItems.length > 0) {
         const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
         setCategories(uniqueCategories);
+        if (uniqueCategories.length > 0 && !uniqueCategories.includes(selectedCategory)) {
+          setSelectedCategory('All');
+        }
     }
-  }, [menuItems]);
+  }, [menuItems, selectedCategory]);
   
   const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
     if (!menuItems) return [];
