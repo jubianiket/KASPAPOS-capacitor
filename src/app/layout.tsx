@@ -77,11 +77,11 @@ export default function RootLayout({
         <div className="flex flex-col min-h-screen">
           <Header onMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-grow">
-            {React.cloneElement(children as React.ReactElement, { 
+            {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement, { 
                 menuItems, 
                 isMenuLoading,
                 onRefreshMenu: fetchMenu 
-            })}
+            }) : children}
           </main>
         </div>
         <Toaster />
