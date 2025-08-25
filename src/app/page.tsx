@@ -294,6 +294,8 @@ export default function Home() {
       rate: itemRate,
       category: 'Custom',
       portion: 'Custom',
+      is_active: true,
+      available: true,
     };
     addToOrder(customItem, 'Custom');
   };
@@ -515,3 +517,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

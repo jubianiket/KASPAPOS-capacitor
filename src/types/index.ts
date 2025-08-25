@@ -76,3 +76,5 @@ export interface RestaurantSettings {
     cgst?: number;
     table_count?: number;
 }
+
+    

@@ -292,3 +292,5 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
     
     return data as RestaurantSettings | null;
 }
+
+    
