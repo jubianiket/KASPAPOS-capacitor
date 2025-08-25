@@ -65,7 +65,8 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase
         .from('menu_items')
         .select('*')
-        .match({ is_active: true, available: true })
+        .neq('is_active', false) // Correctly fetch items where is_active is true OR null
+        .eq('available', true)
         .order('name');
         
     if (error) {
