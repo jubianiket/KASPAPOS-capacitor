@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signUp } from '@/lib/supabase';
 import type { User } from '@/types';
 import Link from 'next/link';
+import AuthHeader from '@/components/auth-header';
 
 export default function SignupPage() {
     const [formData, setFormData] = useState({
@@ -67,7 +68,8 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+            <AuthHeader />
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Sign Up</CardTitle>

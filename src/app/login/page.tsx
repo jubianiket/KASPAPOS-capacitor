@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { signIn } from '@/lib/supabase';
 import Link from 'next/link';
+import AuthHeader from '@/components/auth-header';
 
 export default function LoginPage() {
     const [login, setLogin] = useState('');
@@ -42,7 +43,8 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+            <AuthHeader />
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
