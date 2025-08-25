@@ -31,6 +31,7 @@ const settingsSchema = z.object({
   vat: z.coerce.number().min(0).optional(),
   igst: z.coerce.number().min(0).optional(),
   cgst: z.coerce.number().min(0).optional(),
+  table_count: z.coerce.number().min(1, 'There must be at least one table.').max(100).optional(),
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -62,6 +63,7 @@ export default function SettingsPage() {
       vat: 0,
       igst: 0,
       cgst: 0,
+      table_count: 12,
     }
   });
 
@@ -79,7 +81,10 @@ export default function SettingsPage() {
         const fetchedSettings = await getSettings();
         if (fetchedSettings) {
           setSettings(fetchedSettings);
-          reset(fetchedSettings);
+          reset({
+            ...fetchedSettings,
+            table_count: fetchedSettings.table_count || 12, // Ensure default if not set
+          });
         }
         setIsLoading(false);
       };
@@ -156,6 +161,20 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input id="phone" type="tel" {...field} value={field.value || ''} />
+                </div>
+              )}
+            />
+             <Controller
+              name="table_count"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label htmlFor="table_count">Number of Tables</Label>
+                  <Input id="table_count" type="number" {...field} value={field.value || ''} />
+                  {errors.table_count && <p className="text-sm text-destructive">{errors.table_count.message}</p>}
+                   <p className="text-xs text-muted-foreground">
+                        Set the total number of tables available in your restaurant.
+                   </p>
                 </div>
               )}
             />
