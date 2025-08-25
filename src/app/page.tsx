@@ -44,13 +44,12 @@ export default function Home() {
       const [orders, fetchedSettings] = await Promise.all([
           getActiveOrders(),
           getSettings(),
-          onRefreshMenu(), // Fetch menu items via context
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
       
       setIsLoading(false);
-  }, [onRefreshMenu]);
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');

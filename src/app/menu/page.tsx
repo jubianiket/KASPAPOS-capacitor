@@ -33,10 +33,8 @@ export default function MenuPage() {
     } else {
       setUser(JSON.parse(storedUser));
       setIsClient(true);
-      // Fetch menu when component mounts
-      onRefreshMenu();
     }
-  }, [router, onRefreshMenu]);
+  }, [router]);
   
   useEffect(() => {
     if (menuItems && menuItems.length > 0) {

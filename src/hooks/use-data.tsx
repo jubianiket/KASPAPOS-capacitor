@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import type { MenuItem } from '@/types';
 import { getMenuItems } from '@/lib/supabase';
 
@@ -19,10 +19,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchMenu = useCallback(async () => {
     setIsMenuLoading(true);
-    const items = await getMenuItems();
-    setMenuItems(items);
-    setIsMenuLoading(false);
+    try {
+        const items = await getMenuItems();
+        setMenuItems(items);
+    } catch (error) {
+        console.error("Failed to fetch menu items:", error);
+        setMenuItems([]); // Set to empty array on error
+    } finally {
+        setIsMenuLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchMenu();
+  }, [fetchMenu]);
 
   const value = {
     menuItems,
