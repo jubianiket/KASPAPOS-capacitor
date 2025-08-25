@@ -479,11 +479,15 @@ export default function Home() {
                     onValueChange={handleCategoryChange}
                     className="flex-wrap justify-start"
                 >
-                {categories.map(category => (
-                    <ToggleGroupItem key={category} value={category}>
-                        {category}
-                    </ToggleGroupItem>
-                ))}
+                {isMenuLoading ? (
+                    <Skeleton className="h-9 w-full" />
+                ) : (
+                  categories.map(category => (
+                      <ToggleGroupItem key={category} value={category}>
+                          {category}
+                      </ToggleGroupItem>
+                  ))
+                )}
                 </ToggleGroup>
             </div>
             <MenuGrid 
