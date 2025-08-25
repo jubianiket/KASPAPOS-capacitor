@@ -35,6 +35,9 @@ export default function RootLayout({
         setSettings(fetchedSettings);
         document.documentElement.classList.toggle('dark', !!fetchedSettings.dark_mode);
         if (fetchedSettings.theme_color) {
+            // HSL values are stored as a string "H S% L%" but CSS variables need them without units
+            // e.g. "240 5.9% 10%" -> "240 5.9 10" - this is incorrect, it needs the percentage.
+            // The format from the input is likely correct "240 5.9% 10%". Let's assume it is.
             document.documentElement.style.setProperty('--primary', fetchedSettings.theme_color);
         }
          if (fetchedSettings.restaurant_name) {

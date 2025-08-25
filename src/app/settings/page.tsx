@@ -94,7 +94,7 @@ export default function SettingsPage() {
 
   const onSubmit = async (data: SettingsFormData) => {
     const settingsToSave: RestaurantSettings = {
-      ...(settings || { id: 1 }), // Always use id: 1
+      ...(settings || { id: 1 }), // Ensure ID is present
       ...data,
     };
     

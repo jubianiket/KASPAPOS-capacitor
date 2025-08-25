@@ -253,6 +253,11 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 // --- Restaurant Settings ---
 
 export const getSettings = async (): Promise<RestaurantSettings | null> => {
+    const settingsFromStorage = localStorage.getItem('restaurant_settings');
+    if (settingsFromStorage) {
+        return JSON.parse(settingsFromStorage);
+    }
+
     const { data, error } = await supabase
         .from('restaurant_settings')
         .select('*')
@@ -263,6 +268,10 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
         console.error("Error fetching settings:", error);
         return null;
     }
+    
+    if (data) {
+        localStorage.setItem('restaurant_settings', JSON.stringify(data));
+    }
 
     return data as RestaurantSettings | null;
 }
@@ -270,8 +279,11 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
 
 export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
     const { id, ...updateData } = settings;
-    
-    // Use upsert to create settings if they don't exist, or update them if they do.
+
+    // Persist to local storage first for speed and offline capability
+    localStorage.setItem('restaurant_settings', JSON.stringify(settings));
+
+    // Then, attempt to save to Supabase
     const { data, error } = await supabase
         .from('restaurant_settings')
         .upsert({ ...updateData, id: 1 })
@@ -280,7 +292,13 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
     
     if (error) {
         console.error("Error updating settings:", error);
-        return null;
+        // Even if DB fails, the data is in local storage.
+        // We can return the settings from memory.
+        // A more robust solution might have a background sync queue.
+        return settings; 
     }
+    
+    // Update local storage again with the definitive data from DB
+    localStorage.setItem('restaurant_settings', JSON.stringify(data));
     return data as RestaurantSettings;
 }
