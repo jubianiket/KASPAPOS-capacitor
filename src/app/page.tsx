@@ -12,7 +12,7 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings, getMenuItems } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
@@ -44,12 +44,11 @@ export default function Home() {
       const [orders, fetchedSettings] = await Promise.all([
           getActiveOrders(),
           getSettings(),
+          onRefreshMenu(), // Fetch menu items via context
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
       
-      await onRefreshMenu(); // Fetch menu items
-
       setIsLoading(false);
   }, [onRefreshMenu]);
 

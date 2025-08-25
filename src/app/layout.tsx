@@ -7,8 +7,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
-import { getSettings, getMenuItems } from '@/lib/supabase';
-import type { RestaurantSettings, MenuItem } from '@/types';
+import { getSettings } from '@/lib/supabase';
+import type { RestaurantSettings } from '@/types';
 import { DataProvider } from '@/hooks/use-data';
 
 // This component can't be a server component because we need to fetch settings
@@ -28,16 +28,7 @@ export default function RootLayout({
 }>) {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [isMenuLoading, setIsMenuLoading] = useState(true);
 
-  const fetchMenu = useCallback(async () => {
-    setIsMenuLoading(true);
-    const items = await getMenuItems();
-    setMenuItems(items);
-    setIsMenuLoading(false);
-  }, []);
-  
   const applySettings = (settingsToApply: RestaurantSettings | null) => {
     if (settingsToApply) {
         setSettings(settingsToApply);
@@ -62,8 +53,6 @@ export default function RootLayout({
         // Then, fetch the latest settings from the database
         const fetchedSettings = await getSettings();
         applySettings(fetchedSettings);
-
-        // Menu will be fetched by individual pages
     };
     
     initializeApp();
@@ -80,13 +69,7 @@ export default function RootLayout({
         ></link>
       </head>
       <body className="font-body antialiased">
-        <DataProvider
-          value={{
-            menuItems,
-            isMenuLoading,
-            onRefreshMenu: fetchMenu,
-          }}
-        >
+        <DataProvider>
           <div className="flex flex-col min-h-screen">
             <Sidebar isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
             <Header onMenuClick={() => setIsSidebarOpen(true)} />
