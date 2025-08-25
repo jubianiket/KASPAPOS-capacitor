@@ -38,29 +38,44 @@ export default function RootLayout({
     setIsMenuLoading(false);
   }, []);
   
-  useEffect(() => {
-    fetchMenu();
-  }, [fetchMenu]);
-
-
-  useEffect(() => {
-    const fetchAndApplySettings = async () => {
-      const fetchedSettings = await getSettings();
-      if (fetchedSettings) {
-        setSettings(fetchedSettings);
-        document.documentElement.classList.toggle('dark', !!fetchedSettings.dark_mode);
-        if (fetchedSettings.theme_color) {
-            // HSL values are stored as a string "H S% L%" but CSS variables need them without units
-            // e.g. "240 5.9% 10%" -> "240 5.9 10" - this is incorrect, it needs the percentage.
-            // The format from the input is likely correct "240 5.9% 10%". Let's assume it is.
-            document.documentElement.style.setProperty('--primary', fetchedSettings.theme_color);
+  const applySettings = (settingsToApply: RestaurantSettings | null) => {
+    if (settingsToApply) {
+        setSettings(settingsToApply);
+        document.documentElement.classList.toggle('dark', !!settingsToApply.dark_mode);
+        if (settingsToApply.theme_color) {
+            document.documentElement.style.setProperty('--primary', settingsToApply.theme_color);
         }
-         if (fetchedSettings.restaurant_name) {
-            document.title = `${fetchedSettings.restaurant_name} | KASPA POS`;
+         if (settingsToApply.restaurant_name) {
+            document.title = `${settingsToApply.restaurant_name} | KASPA POS`;
         }
       }
+  }
+  
+  useEffect(() => {
+    const initializeApp = async () => {
+        // First, try to load settings from local storage for a fast initial load
+        const cachedSettings = localStorage.getItem('restaurant_settings');
+        if (cachedSettings) {
+            applySettings(JSON.parse(cachedSettings));
+        }
+
+        // Then, fetch the latest settings and menu from the database
+        const [fetchedSettings, items] = await Promise.all([
+            getSettings(),
+            getMenuItems()
+        ]);
+        
+        applySettings(fetchedSettings);
+        setMenuItems(items);
+        setIsMenuLoading(false);
+
+        // Cache the latest settings from DB
+        if(fetchedSettings) {
+            localStorage.setItem('restaurant_settings', JSON.stringify(fetchedSettings));
+        }
     };
-    fetchAndApplySettings();
+    
+    initializeApp();
   }, []);
 
   return (

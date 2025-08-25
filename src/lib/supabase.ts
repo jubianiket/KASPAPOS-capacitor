@@ -1,7 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Order, MenuItem, KitchenOrder, User, RestaurantSettings } from '@/types';
-import { menuItems as defaultMenuItems } from './menu-data'; // Import default data
 
 // Add the following to your .env.local file to connect to your Supabase instance:
 // NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
@@ -260,11 +259,8 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 // --- Restaurant Settings ---
 
 export const getSettings = async (): Promise<RestaurantSettings | null> => {
-    const settingsFromStorage = localStorage.getItem('restaurant_settings');
-    if (settingsFromStorage) {
-        return JSON.parse(settingsFromStorage);
-    }
-
+    // This function runs on both server and client.
+    // Avoid using localStorage directly here.
     const { data, error } = await supabase
         .from('restaurant_settings')
         .select('*')
@@ -276,10 +272,6 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
         return null;
     }
     
-    if (data) {
-        localStorage.setItem('restaurant_settings', JSON.stringify(data));
-    }
-
     return data as RestaurantSettings | null;
 }
 
@@ -287,8 +279,10 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
 export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
     const { id, ...updateData } = settings;
 
-    // Persist to local storage first for speed and offline capability
-    localStorage.setItem('restaurant_settings', JSON.stringify(settings));
+    // Persist to local storage on the client for speed and offline capability
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('restaurant_settings', JSON.stringify(settings));
+    }
 
     // Then, attempt to save to Supabase
     const { data, error } = await supabase
@@ -299,13 +293,13 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
     
     if (error) {
         console.error("Error updating settings:", error);
-        // Even if DB fails, the data is in local storage.
-        // We can return the settings from memory.
         // A more robust solution might have a background sync queue.
-        return settings; 
+        return null;
     }
     
     // Update local storage again with the definitive data from DB
-    localStorage.setItem('restaurant_settings', JSON.stringify(data));
-    return data as RestaurantSettings;
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('restaurant_settings', JSON.stringify(data));
+    }
+    return data as RestaurantSettings | null;
 }
