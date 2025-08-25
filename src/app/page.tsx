@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
@@ -21,7 +21,7 @@ import { useData } from '@/hooks/use-data';
 const tempId = () => -Math.floor(Math.random() * 1000000);
 
 export default function Home() {
-  const { menuItems, isMenuLoading, onRefreshMenu } = useData();
+  const { menuItems: allMenuItems, isMenuLoading, onRefreshMenu } = useData();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -37,6 +37,10 @@ export default function Home() {
   const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+
+  const menuItems = useMemo(() => {
+    return allMenuItems.filter(item => item.is_active);
+  }, [allMenuItems]);
 
 
   const fetchInitialData = useCallback(async () => {
