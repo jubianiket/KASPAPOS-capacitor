@@ -65,6 +65,7 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase
         .from('menu_items')
         .select('*')
+        .neq('is_active', false)
         .order('name');
         
     if (error) {
@@ -257,8 +258,6 @@ export const signIn = async (login: string, password: string): Promise<User | nu
 // --- Restaurant Settings ---
 
 export const getSettings = async (): Promise<RestaurantSettings | null> => {
-    // This function runs on both server and client.
-    // Avoid using localStorage directly here.
     const { data, error } = await supabase
         .from('restaurant_settings')
         .select('*')
@@ -276,21 +275,22 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
 
 export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
     const { id, ...updateData } = settings;
+    
+    // Clean the data to remove any undefined values which can cause issues with upsert
+    const cleanedUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
+    );
 
-    // Then, attempt to save to Supabase
     const { data, error } = await supabase
         .from('restaurant_settings')
-        .upsert({ ...updateData, id: 1 })
+        .upsert({ ...cleanedUpdateData, id: 1 })
         .select()
         .single();
     
     if (error) {
         console.error("Error updating settings:", error);
-        // A more robust solution might have a background sync queue.
         return null;
     }
     
     return data as RestaurantSettings | null;
 }
-
-    
