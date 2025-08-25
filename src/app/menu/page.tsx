@@ -42,13 +42,14 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
   }, [router]);
   
   useEffect(() => {
-    if (menuItems.length > 0) {
+    if (menuItems && menuItems.length > 0) {
         const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
         setCategories(uniqueCategories);
     }
   }, [menuItems]);
   
   const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
+    if (!menuItems) return [];
     const itemMap = new Map<string, GroupedMenuItem>();
     menuItems.forEach(item => {
       let group = itemMap.get(item.name);
