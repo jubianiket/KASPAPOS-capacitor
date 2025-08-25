@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
+import Sidebar from '@/components/sidebar';
 import { getSettings } from '@/lib/supabase';
 import type { RestaurantSettings } from '@/types';
 
@@ -25,6 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchAndApplySettings = async () => {
@@ -54,8 +56,9 @@ export default function RootLayout({
         ></link>
       </head>
       <body className="font-body antialiased">
+        <Sidebar isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
         <div className="flex flex-col min-h-screen">
-          <Header />
+          <Header onMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-grow">{children}</main>
         </div>
         <Toaster />
