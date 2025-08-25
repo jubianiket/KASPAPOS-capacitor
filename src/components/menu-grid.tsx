@@ -44,6 +44,7 @@ export default function MenuGrid({ menuItems, isLoading, onAddToOrder, selectedC
   const { toast } = useToast();
   
   const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
+    if (!menuItems) return [];
     const itemMap = new Map<string, GroupedMenuItem>();
 
     menuItems.forEach(item => {
