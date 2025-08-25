@@ -69,14 +69,11 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         .eq('available', true)
         .order('name');
         
-    console.log('Supabase menu items data:', data);
-    console.error('Supabase menu items error:', error);
-        
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
     }
-    return data.map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
+    return (data || []).map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
 }
 
 export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | null> => {
