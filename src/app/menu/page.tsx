@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { MenuItem, GroupedMenuItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';

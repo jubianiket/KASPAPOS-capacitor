@@ -1,14 +1,14 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
-import { getSettings } from '@/lib/supabase';
 import type { RestaurantSettings } from '@/types';
+import { getSettings } from '@/lib/supabase';
 import { DataProvider } from '@/hooks/use-data';
 
 // This component can't be a server component because we need to fetch settings
@@ -43,19 +43,12 @@ export default function RootLayout({
   }
   
   useEffect(() => {
-    const initializeApp = async () => {
-        // First, try to load settings from local storage for a fast initial load
-        const cachedSettings = localStorage.getItem('restaurant_settings');
-        if (cachedSettings) {
-            applySettings(JSON.parse(cachedSettings));
-        }
-
-        // Then, fetch the latest settings from the database
+    const initializeSettings = async () => {
         const fetchedSettings = await getSettings();
         applySettings(fetchedSettings);
     };
     
-    initializeApp();
+    initializeSettings();
   }, []);
 
   return (
