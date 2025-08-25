@@ -63,11 +63,6 @@ const toSupabase = (order: Order) => {
 
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-    // Returning default menu items to ensure app functionality.
-    // To re-enable Supabase fetching, comment out the line below and uncomment the Supabase logic.
-    return Promise.resolve(defaultMenuItems);
-
-    /*
     const { data, error } = await supabase
         .from('menu_items')
         .select('*')
@@ -80,7 +75,6 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         return [];
     }
     return data.map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
-    */
 }
 
 export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | null> => {
