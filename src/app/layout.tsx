@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
-import { getSettings } from '@/lib/supabase';
-import type { RestaurantSettings } from '@/types';
+import { getSettings, getMenuItems } from '@/lib/supabase';
+import type { RestaurantSettings, MenuItem } from '@/types';
 
 // This component can't be a server component because we need to fetch settings
 // and apply them dynamically, which requires client-side logic.
@@ -27,6 +27,20 @@ export default function RootLayout({
 }>) {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isMenuLoading, setIsMenuLoading] = useState(true);
+
+  const fetchMenu = useCallback(async () => {
+    setIsMenuLoading(true);
+    const items = await getMenuItems();
+    setMenuItems(items);
+    setIsMenuLoading(false);
+  }, []);
+  
+  useEffect(() => {
+    fetchMenu();
+  }, [fetchMenu]);
+
 
   useEffect(() => {
     const fetchAndApplySettings = async () => {
@@ -62,7 +76,13 @@ export default function RootLayout({
         <Sidebar isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
         <div className="flex flex-col min-h-screen">
           <Header onMenuClick={() => setIsSidebarOpen(true)} />
-          <main className="flex-grow">{children}</main>
+          <main className="flex-grow">
+            {React.cloneElement(children as React.ReactElement, { 
+                menuItems, 
+                isMenuLoading,
+                onRefreshMenu: fetchMenu 
+            })}
+          </main>
         </div>
         <Toaster />
       </body>

@@ -12,14 +12,20 @@ import { Utensils, Bike } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings, getMenuItems } from '@/lib/supabase';
+import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
 
-export default function Home() {
+// Props are passed from RootLayout now
+interface HomeProps {
+  menuItems: MenuItem[];
+  isMenuLoading: boolean;
+}
+
+export default function Home({ menuItems, isMenuLoading }: HomeProps) {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -27,8 +33,6 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-
 
   const router = useRouter();
   const { toast } = useToast();
@@ -41,20 +45,18 @@ export default function Home() {
 
   const fetchInitialData = useCallback(async () => {
       setIsLoading(true);
-      const [orders, fetchedSettings, items] = await Promise.all([
+      const [orders, fetchedSettings] = await Promise.all([
           getActiveOrders(),
           getSettings(),
-          getMenuItems()
       ]);
       setActiveOrders(orders); // Fetches all non-paid orders
       setSettings(fetchedSettings);
-      setMenuItems(items);
-
-      const uniqueCategories = ['All', ...Array.from(new Set(items.map(item => item.category).filter(Boolean) as string[]))];
+      
+      const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
       setCategories(uniqueCategories);
 
       setIsLoading(false);
-  }, []);
+  }, [menuItems]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -67,6 +69,14 @@ export default function Home() {
         fetchInitialData();
     }
   }, [router, fetchInitialData]);
+  
+  useEffect(() => {
+      if(menuItems.length > 0) {
+        const uniqueCategories = ['All', ...Array.from(new Set(menuItems.map(item => item.category).filter(Boolean) as string[]))];
+        setCategories(uniqueCategories);
+      }
+  }, [menuItems]);
+
 
   const occupiedTables = activeOrders
     .filter(o => o.order_type === 'dine-in' && o.table_number && o.id! > 0)
@@ -394,6 +404,8 @@ export default function Home() {
         </div>
     )
   }
+  
+  const pageIsLoading = isLoading || isMenuLoading;
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -424,7 +436,7 @@ export default function Home() {
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-            {isClient && !isLoading && activeOrders.length > 0 && (
+            {isClient && !pageIsLoading && activeOrders.length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
                         orders={activeOrders} 
@@ -435,7 +447,7 @@ export default function Home() {
             )}
             {orderType === 'Dine In' && (
               <div className="mb-6">
-                {!isClient || isLoading ? (
+                {!isClient || pageIsLoading ? (
                   <div>
                       <Skeleton className="h-8 w-48 mb-3" />
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
@@ -478,7 +490,7 @@ export default function Home() {
             </div>
             <MenuGrid 
               menuItems={menuItems}
-              isLoading={isLoading}
+              isLoading={isMenuLoading}
               onAddToOrder={addToOrder}
               selectedCategory={selectedCategory}
             />

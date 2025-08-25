@@ -11,7 +11,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Ticket, UtensilsCrossed, LayoutDashboard, LogOut, Settings, X, UserCircle } from 'lucide-react';
+import { Ticket, UtensilsCrossed, LayoutDashboard, LogOut, Settings, X, UserCircle, BookMarked } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import type { User } from '@/types';
@@ -62,6 +62,7 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
 
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
+    { href: '/menu', label: 'Menu', icon: BookMarked },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
     { href: '/settings', label: 'Settings', icon: Settings },
