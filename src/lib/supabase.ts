@@ -65,8 +65,7 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase
         .from('menu_items')
         .select('*')
-        .neq('is_active', false) // Correctly fetch items where is_active is true OR null
-        .eq('available', true)
+        .match({ is_active: true, available: true })
         .order('name');
         
     if (error) {
@@ -279,11 +278,6 @@ export const getSettings = async (): Promise<RestaurantSettings | null> => {
 export const updateSettings = async (settings: RestaurantSettings): Promise<RestaurantSettings | null> => {
     const { id, ...updateData } = settings;
 
-    // Persist to local storage on the client for speed and offline capability
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('restaurant_settings', JSON.stringify(settings));
-    }
-
     // Then, attempt to save to Supabase
     const { data, error } = await supabase
         .from('restaurant_settings')
@@ -297,9 +291,5 @@ export const updateSettings = async (settings: RestaurantSettings): Promise<Rest
         return null;
     }
     
-    // Update local storage again with the definitive data from DB
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('restaurant_settings', JSON.stringify(data));
-    }
     return data as RestaurantSettings | null;
 }
