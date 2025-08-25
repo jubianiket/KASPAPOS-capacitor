@@ -62,6 +62,19 @@ export default function RootLayout({
     fetchAndApplySettings();
   }, []);
 
+  // Clone element is necessary to pass server-fetched data to client components.
+  // This pattern is common for this type of architecture (client-side data fetching at root)
+  const childrenWithProps = React.Children.map(children, child => {
+      if (React.isValidElement(child)) {
+          return React.cloneElement(child as React.ReactElement, { 
+              menuItems, 
+              isMenuLoading,
+              onRefreshMenu: fetchMenu 
+          });
+      }
+      return child;
+  });
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -77,11 +90,7 @@ export default function RootLayout({
         <div className="flex flex-col min-h-screen">
           <Header onMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-grow">
-            {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement, { 
-                menuItems, 
-                isMenuLoading,
-                onRefreshMenu: fetchMenu 
-            }) : children}
+            {childrenWithProps}
           </main>
         </div>
         <Toaster />

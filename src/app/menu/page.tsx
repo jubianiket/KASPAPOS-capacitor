@@ -7,22 +7,17 @@ import type { MenuItem, GroupedMenuItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
-import { addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
+import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import MenuManagementGrid from '@/components/menu-management-grid';
 import MenuItemFormDialog from '@/components/menu-item-form-dialog';
 
-// Props are passed from RootLayout
-interface MenuPageProps {
-  menuItems: MenuItem[];
-  isMenuLoading: boolean;
-  onRefreshMenu: () => void;
-}
-
-export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: MenuPageProps) {
+export default function MenuPage() {
   const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isMenuLoading, setIsMenuLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -31,15 +26,23 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
   const router = useRouter();
   const { toast } = useToast();
 
+  const fetchMenu = useCallback(async () => {
+    setIsMenuLoading(true);
+    const items = await getMenuItems();
+    setMenuItems(items);
+    setIsMenuLoading(false);
+  }, []);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       router.replace('/login');
     } else {
       setUser(JSON.parse(storedUser));
+      fetchMenu();
       setIsClient(true);
     }
-  }, [router]);
+  }, [router, fetchMenu]);
   
   useEffect(() => {
     if (menuItems && menuItems.length > 0) {
@@ -84,25 +87,23 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
   }
   
   const handleDeleteItem = async (itemId: number) => {
-      if (!onRefreshMenu) return;
       const success = await deleteMenuItem(itemId);
       if(success) {
           toast({ title: "Success", description: "Menu item deleted successfully."});
-          onRefreshMenu();
+          fetchMenu();
       } else {
           toast({ variant: 'destructive', title: "Error", description: "Failed to delete menu item."});
       }
   }
 
   const handleFormSubmit = async (values: Partial<MenuItem>) => {
-    if (!onRefreshMenu) return;
     const isEditing = !!editingItem;
     const action = isEditing ? updateMenuItem : addMenuItem;
     const result = isEditing ? await action(editingItem.id, values) : await action(values);
 
     if (result) {
         toast({ title: "Success", description: `Menu item ${isEditing ? 'updated' : 'added'} successfully.` });
-        onRefreshMenu();
+        fetchMenu();
         setIsFormOpen(false);
         setEditingItem(null);
     } else {
