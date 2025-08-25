@@ -69,6 +69,9 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
         .eq('available', true)
         .order('name');
         
+    console.log('Supabase menu items data:', data);
+    console.error('Supabase menu items error:', error);
+        
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
