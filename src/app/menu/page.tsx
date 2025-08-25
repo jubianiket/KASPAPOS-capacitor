@@ -84,6 +84,7 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
   }
   
   const handleDeleteItem = async (itemId: number) => {
+      if (!onRefreshMenu) return;
       const success = await deleteMenuItem(itemId);
       if(success) {
           toast({ title: "Success", description: "Menu item deleted successfully."});
@@ -94,6 +95,7 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
   }
 
   const handleFormSubmit = async (values: Partial<MenuItem>) => {
+    if (!onRefreshMenu) return;
     const isEditing = !!editingItem;
     const action = isEditing ? updateMenuItem : addMenuItem;
     const result = isEditing ? await action(editingItem.id, values) : await action(values);
@@ -144,11 +146,15 @@ export default function MenuPage({ menuItems, isMenuLoading, onRefreshMenu }: Me
             onValueChange={handleCategoryChange}
             className="flex-wrap justify-start"
         >
-        {categories.map(category => (
-            <ToggleGroupItem key={category} value={category}>
-                {category}
-            </ToggleGroupItem>
-        ))}
+        {isMenuLoading ? (
+            <Skeleton className="h-9 w-full" />
+        ) : (
+            categories.map(category => (
+                <ToggleGroupItem key={category} value={category}>
+                    {category}
+                </ToggleGroupItem>
+            ))
+        )}
         </ToggleGroup>
       </div>
 
