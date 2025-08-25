@@ -42,13 +42,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <KaspaLogo />
           <span>KASPA POS</span>
         </Link>
-        <Button variant="ghost" size="icon" onClick={onMenuClick} className="md:hidden">
-            <Menu className="h-6 w-6" />
-            <span className="sr-only">Open Menu</span>
-        </Button>
-         <nav className="hidden md:flex items-center gap-4 md:gap-6">
-            {/* Desktop nav can remain here if needed, or be moved entirely to sidebar */}
-        </nav>
+        <div className="flex items-center gap-4">
+            <nav className="hidden md:flex items-center gap-4 md:gap-6">
+                {/* Desktop nav can remain here if needed, or be moved entirely to sidebar */}
+            </nav>
+            <Button variant="ghost" size="icon" onClick={onMenuClick}>
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open Menu</span>
+            </Button>
+        </div>
       </div>
     </header>
   );
