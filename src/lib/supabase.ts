@@ -62,7 +62,13 @@ const toSupabase = (order: Order) => {
 
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-    const { data, error } = await supabase.from('menu_items').select('*').order('name');
+    const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('is_active', true)
+        .eq('available', true)
+        .order('name');
+        
     if (error) {
         console.error("Error fetching menu items:", error);
         return [];
