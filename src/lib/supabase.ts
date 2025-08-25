@@ -232,7 +232,19 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (userData: Omit<User, 'id' | 'role' | 'restaurant_id'>): Promise<User | null> => {
-    // 1. Create a new restaurant for the user
+    // 1. Check if user already exists
+     const { data: existingUser, error: existingUserError } = await supabase
+        .from('users')
+        .select('id')
+        .or(`username.eq.${userData.username},email.eq.${userData.email}`)
+        .single();
+    
+    if (existingUser) {
+        console.error("User with this username or email already exists.");
+        return null;
+    }
+
+    // 2. Create a new restaurant for the user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -244,7 +256,7 @@ export const signUp = async (userData: Omit<User, 'id' | 'role' | 'restaurant_id
         return null;
     }
 
-    // 2. Create the new user and link them to the new restaurant
+    // 3. Create the new user and link them to the new restaurant
     const { data: newUserData, error: userError } = await supabase
         .from('users')
         .insert({
@@ -266,18 +278,28 @@ export const signUp = async (userData: Omit<User, 'id' | 'role' | 'restaurant_id
 }
 
 export const signIn = async (login: string, password: string): Promise<User | null> => {
+    // This is not secure for production. Passwords should be hashed.
+    // This is for demonstration purposes only.
     const { data, error } = await supabase
         .from('users')
-        .select('*')
-        .or(`username.ilike.${login},email.ilike.${login}`)
-        .eq('password', password) // IMPORTANT: Storing plain text passwords is not secure. This is for demonstration only.
+        .select(`
+            *,
+            restaurant:restaurants(*)
+        `)
+        .or(`username.eq.${login},email.eq.${login}`)
         .single();
 
     if (error || !data) {
-        console.error("Error signing in:", error);
+        console.error("Sign in error or user not found:", error);
         return null;
     }
-    return data as User;
+
+    // Manual password check (again, not secure)
+    if (data.password === password) {
+        return data as User;
+    }
+
+    return null;
 }
 
 // --- Restaurant Settings ---
@@ -302,8 +324,14 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     const { id, ...updateData } = settings;
     
     const cleanedUpdateData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
+        Object.entries(updateData).filter(([_, v]) => v !== undefined)
     );
+
+    if (Object.keys(cleanedUpdateData).length === 0) {
+        // No actual data to update, return current settings
+        return getSettings(restaurantId);
+    }
+
 
     const { data, error } = await supabase
         .from('restaurants')
