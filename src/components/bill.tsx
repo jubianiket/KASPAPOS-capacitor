@@ -1,19 +1,19 @@
 
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils, Send, CheckCheck } from 'lucide-react';
-import type { OrderItem, MenuItem, Order, RestaurantSettings } from '@/types';
+import type { OrderItem, MenuItem, Order, Restaurant } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import { Badge } from './ui/badge';
-import { getSettings } from '@/lib/supabase';
 
 interface BillProps {
   order: Order | null;
+  settings: Restaurant | null;
   onUpdateQuantity: (itemId: number, portion: string | undefined, quantity: number) => void;
   onRemoveItem: (itemId: number, portion: string | undefined) => void;
   onClearOrder: () => void;
@@ -25,6 +25,7 @@ interface BillProps {
 
 export default function Bill({
   order,
+  settings,
   onUpdateQuantity,
   onRemoveItem,
   onClearOrder,
@@ -33,17 +34,8 @@ export default function Bill({
   onNewOrder
 }: BillProps) {
   
-  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const orderItems = order?.items ?? [];
   
-  useEffect(() => {
-    const fetchSettings = async () => {
-        const fetchedSettings = await getSettings();
-        setSettings(fetchedSettings);
-    };
-    fetchSettings();
-  }, []);
-
   const calculations = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.rate * item.quantity, 0);
     

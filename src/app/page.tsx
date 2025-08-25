@@ -300,7 +300,6 @@ export default function Home() {
       category: 'Custom',
       portion: 'Custom',
       is_active: true,
-      available: true,
       restaurant_id: user.restaurant_id,
     };
     addToOrder(customItem, 'Custom');
@@ -513,6 +512,7 @@ export default function Home() {
         <div className="mt-8 lg:mt-0">
           <Bill
             order={activeOrder}
+            settings={settings}
             onUpdateQuantity={updateQuantity}
             onRemoveItem={removeFromOrder}
             onClearOrder={clearOrder}
@@ -525,3 +525,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

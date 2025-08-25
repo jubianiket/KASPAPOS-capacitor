@@ -5,7 +5,6 @@ export interface MenuItem {
   name: string;
   rate: number;
   category: string;
-  available?: boolean;
   portion?: string;
   is_active?: boolean;
   restaurant_id: number;
@@ -80,3 +79,5 @@ export interface Restaurant {
     cgst?: number;
     table_count?: number;
 }
+
+    
