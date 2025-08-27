@@ -68,7 +68,7 @@ export const getMenuItems = async (restaurantId: number): Promise<MenuItem[]> =>
         console.error("Error fetching menu items:", error);
         return [];
     }
-    return (data || []).map(item => ({ ...item, rate: Number(item.rate) })) as MenuItem[];
+    return (data || []).map(item => ({ ...item, rate: Number(item.rate), restaurant_id: restaurantId })) as MenuItem[];
 }
 
 export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | null> => {
@@ -233,13 +233,11 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .maybeSingle();
 
-    // Handle unexpected errors during the check
-    if (existingUserError) {
+    if (existingUserError && existingUserError.code !== 'PGRST116') {
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
-
-    // If a user is found, prevent new signup
+    
     if (existingUser) {
         console.error("User with this email or username already exists.");
         return null;
@@ -323,17 +321,28 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
+    console.log('[updateSettings] Received data:', { restaurantId, settings });
+
+    // Clean the settings object to remove any `undefined` values, as Supabase will ignore them anyway.
+    const validSettings: Partial<Restaurant> = {};
+    for (const key in settings) {
+        if (settings[key as keyof Restaurant] !== undefined) {
+            validSettings[key as keyof Restaurant] = settings[key as keyof Restaurant];
+        }
+    }
+
     const { data, error } = await supabase
         .from('restaurants')
-        .update(settings)
+        .update(validSettings)
         .eq('id', restaurantId)
         .select()
         .single();
     
     if (error) {
-        console.error("Error updating settings:", error);
+        console.error("[updateSettings] Error updating settings in Supabase:", error);
         return null;
     }
     
+    console.log("[updateSettings] Supabase returned success:", data);
     return data as Restaurant | null;
 }
