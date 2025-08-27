@@ -42,7 +42,7 @@ function LoginPageSkeleton() {
 }
 
 export default function LoginPage() {
-    const [login, setLogin] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isClient, setIsClient] = useState(false);
@@ -57,7 +57,7 @@ export default function LoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        const user = await signIn(login, password);
+        const user = await signIn(email, password);
 
         if (user) {
             localStorage.setItem('user', JSON.stringify(user));
@@ -70,10 +70,10 @@ export default function LoginPage() {
             toast({
                 variant: 'destructive',
                 title: 'Login Failed',
-                description: 'Invalid credentials.',
+                description: 'Invalid credentials. Please check your email and password.',
             });
-            setIsLoading(false);
         }
+        setIsLoading(false);
     };
 
     if (!isClient) {
@@ -86,18 +86,18 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>Enter your username or email to access your account.</CardDescription>
+                    <CardDescription>Enter your email to access your account.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="login">Username or Email</Label>
+                            <Label htmlFor="email">Email</Label>
                             <Input
-                                id="login"
-                                type="text"
-                                placeholder="john.doe or john@example.com"
-                                value={login}
-                                onChange={(e) => setLogin(e.target.value)}
+                                id="email"
+                                type="email"
+                                placeholder="john@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>

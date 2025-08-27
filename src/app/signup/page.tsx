@@ -75,16 +75,13 @@ export default function SignupPage() {
             return;
         }
 
-        const newUser: Omit<User, 'id' | 'role' | 'restaurant_id'> = {
-            ...formData,
+        const userData = {
+            name: formData.name,
+            username: formData.username,
             phone: phoneAsNumber,
         };
 
-        const user = await signUp(newUser.email, newUser.password, {
-            name: newUser.name,
-            username: newUser.username,
-            phone: newUser.phone,
-        });
+        const user = await signUp(formData.email, formData.password, userData);
 
         if (user) {
             toast({
@@ -96,10 +93,10 @@ export default function SignupPage() {
             toast({
                 variant: 'destructive',
                 title: 'Signup Failed',
-                description: 'Could not create your account. This username or email may already be taken.',
+                description: 'Could not create your account. This email may already be taken.',
             });
-            setIsLoading(false);
         }
+        setIsLoading(false);
     };
     
     if (!isClient) {

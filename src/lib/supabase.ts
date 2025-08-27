@@ -228,95 +228,86 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication & Restaurant Management ---
 
-export const signUp = async (userData: Omit<User, 'id' | 'role'>): Promise<User | null> => {
-    // 1. Check if user already exists
-    const { data: existingUserCheck } = await supabase
-        .from('users')
-        .select('id')
-        .or(`username.eq.${userData.username},email.eq.${userData.email}`)
-        .single();
+export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
+    
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+    });
 
-    if (existingUserCheck) {
-        console.error("User with this username or email already exists.");
+    if (authError || !authData.user) {
+        console.error("Error during Supabase Auth signup:", authError);
         return null;
     }
 
-    // Since we can't use a secure server-side function, we'll create the user first,
-    // then the restaurant, and then link them. This is less ideal but works with RLS.
-    // NOTE: This is NOT a secure way to handle passwords. This is for demonstration only.
-    // In a real app, use Supabase Auth or a custom server-side hashing function.
-    const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({
-            ...userData,
-            role: 'admin',
-        })
-        .select()
-        .single();
-    
-    if (userError || !newUser) {
-        console.error("Error creating user:", userError);
-        return null;
-    }
-    
-    // 2. Create a new restaurant for the user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
-        .insert({ restaurant_name: `${newUser.name}'s Restaurant` })
+        .insert({ restaurant_name: `${userData.name}'s Restaurant` })
         .select()
         .single();
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Clean up the created user if restaurant creation fails
-        await supabase.from('users').delete().eq('id', newUser.id);
+        // Cleanup the created auth user if restaurant creation fails
+        // This requires admin privileges and can't be done from the client.
+        // A server-side function would be ideal here.
         return null;
     }
-
-    // 3. Link the user to the new restaurant
-    const { data: updatedUser, error: updateUserError } = await supabase
+    
+    const { data: newUser, error: userError } = await supabase
         .from('users')
-        .update({ restaurant_id: restaurantData.id })
-        .eq('id', newUser.id)
+        .insert({
+            ...userData,
+            id: authData.user.id, // Use the UUID from auth.users
+            email: email,
+            role: 'admin',
+            restaurant_id: restaurantData.id,
+        })
         .select()
         .single();
-    
-    if (updateUserError) {
-        console.error("Error linking user to restaurant:", updateUserError);
-        // Clean up both user and restaurant
+
+    if (userError) {
+        console.error("Error creating user profile:", userError);
+        // Attempt to clean up
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
-        await supabase.from('users').delete().eq('id', newUser.id);
         return null;
     }
 
-    return updatedUser as User;
+    return newUser as User;
 };
 
-export const signIn = async (login: string, password: string): Promise<User | null> => {
-    // This is not secure for production. Passwords should be hashed.
-    // This is for demonstration purposes only.
-    const { data, error } = await supabase
+
+export const signIn = async (email: string, password: string): Promise<User | null> => {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+
+    if (authError || !authData.user) {
+        console.error("Sign in error:", authError);
+        return null;
+    }
+    
+    const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .or(`username.eq.${login},email.eq.${login}`)
+        .eq('id', authData.user.id)
         .single();
-
-    if (error || !data) {
-        console.error("Sign in error or user not found:", error);
+    
+    if (profileError || !userProfile) {
+        console.error("Error fetching user profile:", profileError);
+        // Sign out the user if their profile doesn't exist
+        await supabase.auth.signOut();
+        return null;
+    }
+    
+    if (!userProfile.restaurant_id) {
+        console.error("User exists but is not linked to a restaurant.");
+        await supabase.auth.signOut();
         return null;
     }
 
-    // Manual password check (again, not secure)
-    if (data.password === password) {
-        // Ensure the user has a restaurant assigned. This is crucial.
-        if (!data.restaurant_id) {
-            console.error("User exists but is not linked to a restaurant.");
-            return null;
-        }
-        return data as User;
-    }
-
-    return null;
+    return userProfile as User;
 }
 
 // --- Restaurant Settings ---
@@ -364,5 +355,3 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
-
-    

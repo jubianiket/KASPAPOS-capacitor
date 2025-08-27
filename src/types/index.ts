@@ -53,9 +53,8 @@ export interface KitchenOrder {
 }
 
 export interface User {
-    id: number;
+    id: string; // Should be UUID from auth.users
     username: string;
-    password?: string;
     role: string;
     name: string;
     phone: number;
@@ -79,5 +78,3 @@ export interface Restaurant {
     cgst?: number;
     table_count?: number;
 }
-
-    
