@@ -38,7 +38,6 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -67,10 +66,19 @@ export default function SettingsPage() {
       table_count: 12,
     }
   });
+  
+  const fetchSettings = async (restaurantId: number) => {
+    setIsLoading(true);
+    const fetchedSettings = await getSettings(restaurantId);
+    if (fetchedSettings) {
+      reset({
+        ...fetchedSettings,
+        table_count: fetchedSettings.table_count || 12, // Ensure default if not set
+      });
+    }
+    setIsLoading(false);
+  };
 
-  const taxEnabled = watch('tax_enabled');
-  const isBar = watch('is_bar');
-  const isRestaurant = watch('is_restaurant');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -79,37 +87,28 @@ export default function SettingsPage() {
     } else {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      const fetchSettings = async () => {
-        setIsLoading(true);
-        if (parsedUser.restaurant_id) {
-          const fetchedSettings = await getSettings(parsedUser.restaurant_id);
-          if (fetchedSettings) {
-            setSettings(fetchedSettings);
-            reset({
-              ...fetchedSettings,
-              table_count: fetchedSettings.table_count || 12, // Ensure default if not set
-            });
-          }
-        }
+      if (parsedUser.restaurant_id) {
+        fetchSettings(parsedUser.restaurant_id);
+      } else {
         setIsLoading(false);
-      };
-      fetchSettings();
+      }
     }
   }, [router, reset]);
+
+  const taxEnabled = watch('tax_enabled');
+  const isBar = watch('is_bar');
+  const isRestaurant = watch('is_restaurant');
 
   const onSubmit = async (data: SettingsFormData) => {
     if (!user?.restaurant_id) return;
 
-    const settingsToSave: Partial<Restaurant> = {
-      ...data,
-    };
+    const updated = await updateSettings(user.restaurant_id, data);
     
-    const updated = await updateSettings(user.restaurant_id, settingsToSave);
     if (updated) {
-      setSettings(updated);
-      reset(updated); // Re-sync form with new data
       toast({ title: 'Success', description: 'Settings saved successfully.' });
-      // Optional: force a reload to apply theme changes
+      // Re-fetch and re-set the form with the definitive data from the server
+      await fetchSettings(user.restaurant_id);
+      // Optional: force a reload to apply theme changes immediately across the app
       window.location.reload();
     } else {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
