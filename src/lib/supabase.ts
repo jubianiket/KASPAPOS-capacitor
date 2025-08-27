@@ -226,7 +226,6 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
-
     const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select('id')
@@ -318,17 +317,10 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    const cleanedUpdateData = Object.fromEntries(
-        Object.entries(settings).filter(([_, v]) => v !== undefined && v !== null)
-    );
-
-    if (Object.keys(cleanedUpdateData).length === 0) {
-        return getSettings(restaurantId);
-    }
-
+    // This function now correctly passes the whole settings object.
     const { data, error } = await supabase
         .from('restaurants')
-        .update(cleanedUpdateData)
+        .update(settings)
         .eq('id', restaurantId)
         .select()
         .single();
@@ -340,5 +332,3 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
-
-    
