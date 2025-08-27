@@ -239,7 +239,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
     }
     
     if (existingUser) {
-        console.error("User with this email or username already exists.");
+        // This is a normal condition, not an error, so we don't log it. The UI will handle the message.
         return null;
     }
 
@@ -284,46 +284,31 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
     const { data: user, error } = await supabase
         .from('users')
-        .select(`
-            *,
-            restaurant:restaurants(*)
-        `)
+        .select('*')
         .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
         .single();
 
-    // Gracefully handle "user not found" as a normal failed login, not a system error.
-    // The specific error code for zero rows from a .single() query is 'PGRST116'.
+    // If there's an error OR no user is found, the login fails.
+    // A "user not found" is a normal failed login, so we don't log it as an error.
     if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching user:", error);
-        return null;
-    }
-
-    if (!user) {
-        // This case handles when no user is found (error.code was 'PGRST116')
-        return null;
-    }
-
-    if (user.password !== password) {
-        console.error("Password mismatch");
+        // Log only unexpected database errors
+        console.error("Error during sign in:", error);
         return null;
     }
     
-    const { data: freshUser, error: freshError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-     if (freshError || !freshUser) {
-        console.error("Could not re-fetch user after login:", freshError);
-        return null; // Return null if we can't get the fresh user data
+    if (!user) {
+        return null; // User not found
     }
 
-
+    if (user.password !== password) {
+        return null; // Password mismatch
+    }
+    
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = freshUser;
+    const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword as User;
 };
+
 
 // --- Restaurant Settings ---
 
@@ -345,10 +330,11 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
     console.log("[updateSettings] Attempting to update with:", { restaurantId, settings });
+    const { id, ...settingsToUpdate } = settings;
 
     const { data, error } = await supabase
         .from('restaurants')
-        .update(settings)
+        .update(settingsToUpdate)
         .eq('id', restaurantId)
         .select()
         .single();
@@ -361,3 +347,5 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     console.log("[updateSettings] Success from Supabase:", data);
     return data as Restaurant | null;
 }
+
+    
