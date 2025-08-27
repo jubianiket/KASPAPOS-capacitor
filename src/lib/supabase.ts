@@ -234,8 +234,14 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .single();
 
-    if (existingUser || existingUserError) {
-        console.error("User with this email or username already exists.", existingUserError);
+    // The .single() method throws an error if no row is found (code: PGRST116). This is expected.
+    // We only fail if a user *is* found, or if a *different* error occurs.
+    if (existingUser) {
+        console.error("User with this email or username already exists.");
+        return null;
+    } else if (existingUserError && existingUserError.code !== 'PGRST116') {
+        // Handle unexpected database errors
+        console.error("Error checking for existing user:", existingUserError);
         return null;
     }
 
@@ -267,7 +273,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .single();
 
     if (userError) {
-        console.error("Error creating user:", userError);
+        console.error("Error signing up:", userError);
         // Attempt to clean up the created restaurant if user creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         return null;
@@ -290,7 +296,7 @@ export const signIn = async (email: string, password: string): Promise<User | nu
     }
     
     // WARNING: Storing and comparing passwords in plain text is highly insecure.
-    // This is for demonstration purposes based on the request.
+    // This is for demonstration purposes based on your request.
     if (data.password === password) {
         const { password, ...userWithoutPassword } = data;
         return userWithoutPassword as User;
@@ -344,5 +350,3 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
-
-    
