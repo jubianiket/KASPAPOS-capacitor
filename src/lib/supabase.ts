@@ -1,5 +1,6 @@
 
 
+
 import { createClient } from '@supabase/supabase-js';
 import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 
@@ -226,26 +227,23 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
-    
-    // Check if user already exists
+
     const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select('id')
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .single();
 
-    // The .single() method throws an error if no row is found (code: PGRST116). This is expected.
-    // We only fail if a user *is* found, or if a *different* error occurs.
-    if (existingUser) {
-        console.error("User with this email or username already exists.");
+    if (existingUser && existingUserError?.code !== 'PGRST116') {
+        console.error("User with this email or username already exists.", existingUserError);
         return null;
-    } else if (existingUserError && existingUserError.code !== 'PGRST116') {
-        // Handle unexpected database errors
+    }
+    
+    if (existingUserError && existingUserError.code !== 'PGRST116') {
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
 
-    // Create a new restaurant for the user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -257,11 +255,10 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         return null;
     }
 
-    // Create the new user and link to the restaurant
     const userToCreate = {
         ...userData,
         email,
-        password, // Storing password in plain text - NOT RECOMMENDED
+        password, 
         role: 'admin',
         restaurant_id: restaurantData.id,
     };
@@ -274,7 +271,6 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError) {
         console.error("Error signing up:", userError);
-        // Attempt to clean up the created restaurant if user creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         return null;
     }
@@ -295,8 +291,6 @@ export const signIn = async (email: string, password: string): Promise<User | nu
         return null;
     }
     
-    // WARNING: Storing and comparing passwords in plain text is highly insecure.
-    // This is for demonstration purposes based on your request.
     if (data.password === password) {
         const { password, ...userWithoutPassword } = data;
         return userWithoutPassword as User;
@@ -325,16 +319,13 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    const { id, ...updateData } = settings;
-    
     const cleanedUpdateData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
+        Object.entries(settings).filter(([key, v]) => v !== undefined && v !== null && key !== 'id')
     );
 
     if (Object.keys(cleanedUpdateData).length === 0) {
         return getSettings(restaurantId);
     }
-
 
     const { data, error } = await supabase
         .from('restaurants')

@@ -79,5 +79,3 @@ export interface Restaurant {
     cgst?: number;
     table_count?: number;
 }
-
-    
