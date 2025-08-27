@@ -1,6 +1,5 @@
 
 
-
 import { createClient } from '@supabase/supabase-js';
 import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 
@@ -234,13 +233,13 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .single();
 
-    if (existingUser && existingUserError?.code !== 'PGRST116') {
-        console.error("User with this email or username already exists.", existingUserError);
+    if (existingUserError && existingUserError.code !== 'PGRST116') { // PGRST116: "exact one row expected"
+        console.error("Error checking for existing user:", existingUserError);
         return null;
     }
-    
-    if (existingUserError && existingUserError.code !== 'PGRST116') {
-        console.error("Error checking for existing user:", existingUserError);
+
+    if (existingUser) {
+        console.error("User with this email or username already exists.", existingUserError);
         return null;
     }
 
@@ -320,7 +319,7 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
     const cleanedUpdateData = Object.fromEntries(
-        Object.entries(settings).filter(([key, v]) => v !== undefined && v !== null && key !== 'id')
+        Object.entries(settings).filter(([_, v]) => v !== undefined && v !== null)
     );
 
     if (Object.keys(cleanedUpdateData).length === 0) {
@@ -341,3 +340,5 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
+
+    

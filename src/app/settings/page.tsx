@@ -81,13 +81,15 @@ export default function SettingsPage() {
       setUser(parsedUser);
       const fetchSettings = async () => {
         setIsLoading(true);
-        const fetchedSettings = await getSettings(parsedUser.restaurant_id);
-        if (fetchedSettings) {
-          setSettings(fetchedSettings);
-          reset({
-            ...fetchedSettings,
-            table_count: fetchedSettings.table_count || 12, // Ensure default if not set
-          });
+        if (parsedUser.restaurant_id) {
+          const fetchedSettings = await getSettings(parsedUser.restaurant_id);
+          if (fetchedSettings) {
+            setSettings(fetchedSettings);
+            reset({
+              ...fetchedSettings,
+              table_count: fetchedSettings.table_count || 12, // Ensure default if not set
+            });
+          }
         }
         setIsLoading(false);
       };
@@ -341,3 +343,5 @@ const SettingsSkeleton = () => (
         </Card>
     </div>
 );
+
+    
