@@ -225,7 +225,7 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication & Restaurant Management ---
 
-export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
+export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email'>): Promise<User | null> => {
     // 1. Check if user already exists by email or username
     const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
@@ -233,7 +233,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .maybeSingle();
 
-    if (existingUserError && existingUserError.code !== 'PGRST116') {
+    if (existingUserError && existingUserError.code !== 'PGRST116') { // PGRST116 means no rows found, which is OK
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
@@ -284,7 +284,10 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 export const signIn = async (email: string, password: string): Promise<User | null> => {
     const { data: user, error } = await supabase
         .from('users')
-        .select('*')
+        .select(`
+            *,
+            restaurant:restaurants(*)
+        `)
         .eq('email', email)
         .single();
 
@@ -297,9 +300,21 @@ export const signIn = async (email: string, password: string): Promise<User | nu
         console.error("Password mismatch");
         return null;
     }
+    
+    const { data: freshUser, error: freshError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+     if (freshError || !freshUser) {
+        console.error("Could not re-fetch user after login:", freshError);
+        return null; // Return null if we can't get the fresh user data
+    }
+
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = freshUser;
     return userWithoutPassword as User;
 };
 
@@ -322,7 +337,7 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    console.log("updateSettings called with:", { restaurantId, settings });
+    console.log("[updateSettings] Attempting to update with:", { restaurantId, settings });
 
     const { data, error } = await supabase
         .from('restaurants')
@@ -332,10 +347,10 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
         .single();
     
     if (error) {
-        console.error("[updateSettings] Error updating settings in Supabase:", error);
+        console.error("[updateSettings] Error from Supabase:", error);
         return null;
     }
     
-    console.log("[updateSettings] Supabase returned:", data);
+    console.log("[updateSettings] Success from Supabase:", data);
     return data as Restaurant | null;
 }
