@@ -2,10 +2,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 
-// Add the following to your .env.local file to connect to your Supabase instance:
-// NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
-// NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -282,10 +278,7 @@ export const signIn = async (login: string, password: string): Promise<User | nu
     // This is for demonstration purposes only.
     const { data, error } = await supabase
         .from('users')
-        .select(`
-            *,
-            restaurant:restaurants(*)
-        `)
+        .select('*')
         .or(`username.eq.${login},email.eq.${login}`)
         .single();
 
@@ -324,7 +317,7 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     const { id, ...updateData } = settings;
     
     const cleanedUpdateData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, v]) => v !== undefined)
+        Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
     );
 
     if (Object.keys(cleanedUpdateData).length === 0) {
