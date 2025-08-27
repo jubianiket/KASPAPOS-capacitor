@@ -282,17 +282,23 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
+    const isNumeric = !isNaN(Number(identifier));
+    
+    let orConditions = `email.eq.${identifier},username.eq.${identifier}`;
+    if(isNumeric){
+      orConditions += `,phone.eq.${Number(identifier)}`;
+    }
+
     const { data: user, error } = await supabase
         .from('users')
         .select('*')
-        .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
+        .or(orConditions)
         .single();
 
-    // If there's an error OR no user is found, the login fails.
-    // A "user not found" is a normal failed login, so we don't log it as an error.
+    // The specific error code for zero rows from a .single() query is 'PGRST116'.
+    // We only want to log an error if it's something other than 'user not found'.
     if (error && error.code !== 'PGRST116') {
-        // Log only unexpected database errors
-        console.error("Error during sign in:", error);
+        console.error("Error fetching user:", error);
         return null;
     }
     
@@ -303,9 +309,20 @@ export const signIn = async (identifier: string, password: string): Promise<User
     if (user.password !== password) {
         return null; // Password mismatch
     }
+
+    const { data: latestUser, error: latestUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+    
+    if(latestUserError || !latestUser) {
+        console.error('Could not re-fetch user after sign-in', latestUserError);
+        return null;
+    }
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = latestUser;
     return userWithoutPassword as User;
 };
 
@@ -313,6 +330,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
 // --- Restaurant Settings ---
 
 export const getSettings = async (restaurantId: number): Promise<Restaurant | null> => {
+    console.log("[getSettings] Fetching for restaurant_id:", restaurantId);
     const { data, error } = await supabase
         .from('restaurants')
         .select('*')
@@ -320,10 +338,11 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
         .single();
     
     if(error) {
-        console.error("Error fetching settings:", error);
+        console.error("[getSettings] Error fetching settings:", error);
         return null;
     }
     
+    console.log("[getSettings] Fetched settings:", data);
     return data as Restaurant | null;
 }
 
@@ -347,5 +366,3 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     console.log("[updateSettings] Success from Supabase:", data);
     return data as Restaurant | null;
 }
-
-    
