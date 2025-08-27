@@ -21,40 +21,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // This effect listens for changes in the user stored in localStorage
+    // which typically happens on login/logout or when the page loads.
     const userStr = localStorage.getItem('user');
     if (userStr) {
       setUser(JSON.parse(userStr));
     } else {
       setUser(null);
     }
-  }, [pathname]);
+  }, [pathname]); // Re-check user on route change
 
   const fetchMenu = useCallback(async () => {
     if (!user?.restaurant_id) {
+        // If there is no user or no restaurant_id, clear the menu and stop loading.
         setMenuItems([]);
         setIsMenuLoading(false);
         return;
     }
+    
+    // Set loading state to true before fetching.
     setIsMenuLoading(true);
     try {
+        // Fetch menu items specifically for the user's restaurant.
         const items = await getMenuItems(user.restaurant_id);
         setMenuItems(items);
     } catch (error) {
         console.error("Failed to fetch menu items:", error);
-        setMenuItems([]); // Set to empty array on error
+        setMenuItems([]); // Set to empty array on error to avoid showing stale data.
     } finally {
         setIsMenuLoading(false);
     }
-  }, [user]);
+  }, [user]); // This hook depends on the user object.
 
   useEffect(() => {
+    // This effect triggers the fetchMenu function whenever the user object changes.
+    // This is the core logic that ensures the correct menu is loaded for the current user.
     fetchMenu();
   }, [fetchMenu]);
 
   const value = {
     menuItems,
     isMenuLoading,
-    onRefreshMenu: fetchMenu,
+    onRefreshMenu: fetchMenu, // Expose a manual refresh function
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
