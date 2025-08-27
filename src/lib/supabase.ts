@@ -226,18 +226,21 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
-    // 1. Check if user already exists
+    // 1. Check if user already exists by email or username
     const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select('id')
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .maybeSingle();
 
+    // A "PGRST116" error means no rows were found, which is what we want for a new signup.
+    // Any other error is a real problem.
     if (existingUserError && existingUserError.code !== 'PGRST116') {
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
     
+    // If we found a user, it's a duplicate.
     if (existingUser) {
         console.error("User with this email or username already exists.");
         return null;
@@ -282,25 +285,39 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (email: string, password: string): Promise<User | null> => {
-    const { data, error } = await supabase
+    // Step 1: Find the user by email
+    const { data: userAuthData, error: authError } = await supabase
+        .from('users')
+        .select('password')
+        .eq('email', email)
+        .single();
+
+    if (authError || !userAuthData) {
+        console.error("Error fetching user or user not found:", authError);
+        return null;
+    }
+    
+    // Step 2: Verify the password
+    if (userAuthData.password !== password) {
+        console.error("Password mismatch");
+        return null;
+    }
+    
+    // Step 3: If password is correct, fetch the full user profile to ensure all data is up-to-date
+    const { data: fullProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .single();
 
-    if (error || !data) {
-        console.error("Error fetching user or user not found:", error);
-        return null;
+    if (profileError || !fullProfile) {
+        console.error("Could not fetch full user profile after sign in:", profileError);
+        return null; // This should ideally not happen if the previous step succeeded
     }
-    
-    if (data.password === password) {
-        const { password, ...userWithoutPassword } = data;
-        return userWithoutPassword as User;
-    }
-    
-    console.error("Password mismatch");
-    return null;
-}
+
+    const { password: _, ...userWithoutPassword } = fullProfile;
+    return userWithoutPassword as User;
+};
 
 // --- Restaurant Settings ---
 
@@ -321,19 +338,10 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    console.log('[updateSettings] Received data:', { restaurantId, settings });
-
-    // Clean the settings object to remove any `undefined` values, as Supabase will ignore them anyway.
-    const validSettings: Partial<Restaurant> = {};
-    for (const key in settings) {
-        if (settings[key as keyof Restaurant] !== undefined) {
-            validSettings[key as keyof Restaurant] = settings[key as keyof Restaurant];
-        }
-    }
-
+    // No need to clean the object here, Supabase handles undefined keys.
     const { data, error } = await supabase
         .from('restaurants')
-        .update(validSettings)
+        .update(settings)
         .eq('id', restaurantId)
         .select()
         .single();
@@ -343,6 +351,5 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
         return null;
     }
     
-    console.log("[updateSettings] Supabase returned success:", data);
     return data as Restaurant | null;
 }

@@ -37,7 +37,6 @@ const settingsSchema = z.object({
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export default function SettingsPage() {
-  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -86,54 +85,50 @@ export default function SettingsPage() {
       router.replace('/login');
     } else {
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
       if (parsedUser.restaurant_id) {
         fetchSettings(parsedUser.restaurant_id);
       } else {
-        setIsLoading(false);
+        setIsLoading(false); // No restaurant ID, stop loading
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find a restaurant associated with your account.' });
       }
     }
-  }, [router, reset]);
+  }, [router, reset, toast]);
 
   const taxEnabled = watch('tax_enabled');
   const isBar = watch('is_bar');
   const isRestaurant = watch('is_restaurant');
 
   const onSubmit = async (data: SettingsFormData) => {
-    console.log('[onSubmit] Save button clicked. Form data:', data);
     const userStr = localStorage.getItem('user');
     if (!userStr) {
-        console.error('[onSubmit] No user found in localStorage.');
         toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in.' });
         return;
     }
     const currentUser = JSON.parse(userStr);
-    console.log('[onSubmit] Current user from localStorage:', currentUser);
 
     if (!currentUser?.restaurant_id) {
-       console.error('[onSubmit] No restaurant_id found for the user.');
        toast({ variant: 'destructive', title: 'Error', description: 'No restaurant associated with your account.' });
        return;
     }
-    console.log(`[onSubmit] Calling updateSettings with restaurant_id: ${currentUser.restaurant_id}`);
 
     const updated = await updateSettings(currentUser.restaurant_id, data);
     
     if (updated) {
-      console.log('[onSubmit] updateSettings returned success:', updated);
       toast({ title: 'Success', description: 'Settings saved successfully.' });
-      await fetchSettings(currentUser.restaurant_id);
-      // window.location.reload(); // Temporarily disabled for easier debugging
+      // Refetch settings to ensure form state is in sync with DB
+      await fetchSettings(currentUser.restaurant_id); 
     } else {
-      console.error('[onSubmit] updateSettings returned failure.');
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings. Check console for details.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
   };
   
    useEffect(() => {
     const subscription = watch((value, { name, type }) => {
-      if (name === 'dark_mode') {
-        document.documentElement.classList.toggle('dark', !!value.dark_mode);
+      if (name === 'dark_mode' && value.dark_mode !== undefined) {
+        document.documentElement.classList.toggle('dark', value.dark_mode);
+      }
+      if (name === 'theme_color' && value.theme_color) {
+        document.documentElement.style.setProperty('--primary', value.theme_color);
       }
     });
     return () => subscription.unsubscribe();
