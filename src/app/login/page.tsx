@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,47 @@ import { useToast } from '@/hooks/use-toast';
 import { signIn } from '@/lib/supabase';
 import Link from 'next/link';
 import AuthHeader from '@/components/auth-header';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function LoginPageSkeleton() {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+            <AuthHeader />
+            <Card className="w-full max-w-sm">
+                <CardHeader>
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-4/5" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-4 w-3/5" />
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
 
 export default function LoginPage() {
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isClient, setIsClient] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
+    
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,6 +75,10 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
+
+    if (!isClient) {
+        return <LoginPageSkeleton />;
+    }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">

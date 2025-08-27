@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,32 @@ import { signUp } from '@/lib/supabase';
 import type { User } from '@/types';
 import Link from 'next/link';
 import AuthHeader from '@/components/auth-header';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function SignupPageSkeleton() {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+            <AuthHeader />
+            <Card className="w-full max-w-sm">
+                <CardHeader>
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-4/5" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full" /></div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-4 w-3/5" />
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
 
 export default function SignupPage() {
     const [formData, setFormData] = useState({
@@ -22,8 +48,13 @@ export default function SignupPage() {
         email: '',
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isClient, setIsClient] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -44,12 +75,16 @@ export default function SignupPage() {
             return;
         }
 
-        const newUser: Omit<User, 'id' | 'role'> = {
+        const newUser: Omit<User, 'id' | 'role' | 'restaurant_id'> = {
             ...formData,
             phone: phoneAsNumber,
         };
 
-        const user = await signUp(newUser);
+        const user = await signUp(newUser.email, newUser.password, {
+            name: newUser.name,
+            username: newUser.username,
+            phone: newUser.phone,
+        });
 
         if (user) {
             toast({
@@ -61,11 +96,15 @@ export default function SignupPage() {
             toast({
                 variant: 'destructive',
                 title: 'Signup Failed',
-                description: 'Could not create your account. Please try again.',
+                description: 'Could not create your account. This username or email may already be taken.',
             });
             setIsLoading(false);
         }
     };
+    
+    if (!isClient) {
+        return <SignupPageSkeleton />;
+    }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
