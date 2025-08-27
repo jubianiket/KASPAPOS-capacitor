@@ -115,23 +115,23 @@ export default function SignupPage() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Full Name</Label>
-                            <Input id="name" value={formData.name} onChange={handleChange} required />
+                            <Input id="name" name="name" autoComplete="name" value={formData.name} onChange={handleChange} required />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" pattern="[0-9]*" value={formData.phone} onChange={handleChange} required />
+                            <Input id="phone" name="phone" type="tel" autoComplete="tel" pattern="[0-9]*" value={formData.phone} onChange={handleChange} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={formData.email} onChange={handleChange} required />
+                            <Input id="email" name="email" type="email" autoComplete="email" value={formData.email} onChange={handleChange} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
-                            <Input id="username" value={formData.username} onChange={handleChange} required />
+                            <Input id="username" name="username" autoComplete="username" value={formData.username} onChange={handleChange} required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input id="password" type="password" value={formData.password} onChange={handleChange} required />
+                            <Input id="password" name="password" type="password" autoComplete="new-password" value={formData.password} onChange={handleChange} required />
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
@@ -150,5 +150,3 @@ export default function SignupPage() {
         </div>
     );
 }
-
-    
