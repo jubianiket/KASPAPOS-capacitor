@@ -281,14 +281,14 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 };
 
 
-export const signIn = async (email: string, password: string): Promise<User | null> => {
+export const signIn = async (identifier: string, password: string): Promise<User | null> => {
     const { data: user, error } = await supabase
         .from('users')
         .select(`
             *,
             restaurant:restaurants(*)
         `)
-        .eq('email', email)
+        .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
         .single();
 
     if (error || !user) {

@@ -42,7 +42,7 @@ function LoginPageSkeleton() {
 }
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isClient, setIsClient] = useState(false);
@@ -57,7 +57,7 @@ export default function LoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        const user = await signIn(email, password);
+        const user = await signIn(identifier, password);
 
         if (user) {
             localStorage.setItem('user', JSON.stringify(user));
@@ -70,7 +70,7 @@ export default function LoginPage() {
             toast({
                 variant: 'destructive',
                 title: 'Login Failed',
-                description: 'Invalid credentials. Please check your email and password.',
+                description: 'Invalid credentials. Please check your details and try again.',
             });
         }
         setIsLoading(false);
@@ -86,20 +86,20 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>Enter your email to access your account.</CardDescription>
+                    <CardDescription>Enter your details to access your account.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="identifier">Email, Username, or Phone</Label>
                             <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                autoComplete="email"
-                                placeholder="john@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                id="identifier"
+                                name="identifier"
+                                type="text"
+                                autoComplete="username"
+                                placeholder="Enter your email, username, or phone"
+                                value={identifier}
+                                onChange={(e) => setIdentifier(e.target.value)}
                                 required
                             />
                         </div>
