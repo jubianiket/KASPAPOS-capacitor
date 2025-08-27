@@ -31,8 +31,6 @@ const fromSupabase = (order: any): Order => {
 }
 
 const toSupabase = (order: Order) => {
-    // Tax calculation is now handled on the client with settings
-    // We just store the final calculated values
     const payload: { [key: string]: any } = {
         date: order.created_at || new Date().toISOString(),
         items: order.items, 
@@ -51,7 +49,6 @@ const toSupabase = (order: Order) => {
         restaurant_id: order.restaurant_id
     };
     
-    // Do not include id for insert operations
     if (order.id > 0) {
         payload.id = order.id;
     }
@@ -230,84 +227,77 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
     
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-    });
+    // Check if user already exists
+    const { data: existingUser, error: existingUserError } = await supabase
+        .from('users')
+        .select('id')
+        .or(`email.eq.${email},username.eq.${userData.username}`)
+        .single();
 
-    if (authError || !authData.user) {
-        console.error("Error during Supabase Auth signup:", authError);
+    if (existingUser || existingUserError) {
+        console.error("User with this email or username already exists.", existingUserError);
         return null;
     }
 
+    // Create a new restaurant for the user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
-        .select()
+        .select('id')
         .single();
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Cleanup the created auth user if restaurant creation fails
-        // This requires admin privileges and can't be done from the client.
-        // A server-side function would be ideal here.
         return null;
     }
-    
+
+    // Create the new user and link to the restaurant
+    const userToCreate = {
+        ...userData,
+        email,
+        password, // Storing password in plain text - NOT RECOMMENDED
+        role: 'admin',
+        restaurant_id: restaurantData.id,
+    };
+
     const { data: newUser, error: userError } = await supabase
         .from('users')
-        .insert({
-            ...userData,
-            id: authData.user.id, // Use the UUID from auth.users
-            email: email,
-            role: 'admin',
-            restaurant_id: restaurantData.id,
-        })
+        .insert(userToCreate)
         .select()
         .single();
 
     if (userError) {
-        console.error("Error creating user profile:", userError);
-        // Attempt to clean up
+        console.error("Error creating user:", userError);
+        // Attempt to clean up the created restaurant if user creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         return null;
     }
-
+    
     return newUser as User;
 };
 
 
 export const signIn = async (email: string, password: string): Promise<User | null> => {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    });
-
-    if (authError || !authData.user) {
-        console.error("Sign in error:", authError);
-        return null;
-    }
-    
-    const { data: userProfile, error: profileError } = await supabase
+    const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authData.user.id)
+        .eq('email', email)
         .single();
-    
-    if (profileError || !userProfile) {
-        console.error("Error fetching user profile:", profileError);
-        // Sign out the user if their profile doesn't exist
-        await supabase.auth.signOut();
-        return null;
-    }
-    
-    if (!userProfile.restaurant_id) {
-        console.error("User exists but is not linked to a restaurant.");
-        await supabase.auth.signOut();
-        return null;
-    }
 
-    return userProfile as User;
+    if (error || !data) {
+        console.error("Error fetching user or user not found:", error);
+        return null;
+    }
+    
+    // WARNING: Storing and comparing passwords in plain text is highly insecure.
+    // This is for demonstration purposes based on the request.
+    if (data.password === password) {
+        const { password, ...userWithoutPassword } = data;
+        return userWithoutPassword as User;
+    }
+    
+    console.error("Password mismatch");
+    return null;
 }
 
 // --- Restaurant Settings ---
@@ -336,7 +326,6 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     );
 
     if (Object.keys(cleanedUpdateData).length === 0) {
-        // No actual data to update, return current settings
         return getSettings(restaurantId);
     }
 
@@ -355,3 +344,5 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
+
+    

@@ -93,7 +93,7 @@ export default function SignupPage() {
             toast({
                 variant: 'destructive',
                 title: 'Signup Failed',
-                description: 'Could not create your account. This email may already be taken.',
+                description: 'Could not create your account. This email or username may already be taken.',
             });
         }
         setIsLoading(false);
@@ -150,3 +150,5 @@ export default function SignupPage() {
         </div>
     );
 }
+
+    
