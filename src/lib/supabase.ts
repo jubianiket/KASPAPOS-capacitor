@@ -291,8 +291,15 @@ export const signIn = async (identifier: string, password: string): Promise<User
         .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
         .single();
 
-    if (error || !user) {
-        console.error("Error fetching user or user not found:", error);
+    // Gracefully handle "user not found" as a normal failed login, not a system error.
+    // The specific error code for zero rows from a .single() query is 'PGRST116'.
+    if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching user:", error);
+        return null;
+    }
+
+    if (!user) {
+        // This case handles when no user is found (error.code was 'PGRST116')
         return null;
     }
 
