@@ -100,15 +100,22 @@ export default function SettingsPage() {
   const isRestaurant = watch('is_restaurant');
 
   const onSubmit = async (data: SettingsFormData) => {
-    if (!user?.restaurant_id) return;
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in.' });
+        return;
+    }
+    const currentUser = JSON.parse(userStr);
+    if (!currentUser?.restaurant_id) {
+       toast({ variant: 'destructive', title: 'Error', description: 'No restaurant associated with your account.' });
+       return
+    };
 
-    const updated = await updateSettings(user.restaurant_id, data);
+    const updated = await updateSettings(currentUser.restaurant_id, data);
     
     if (updated) {
       toast({ title: 'Success', description: 'Settings saved successfully.' });
-      // Re-fetch and re-set the form with the definitive data from the server
-      await fetchSettings(user.restaurant_id);
-      // Optional: force a reload to apply theme changes immediately across the app
+      await fetchSettings(currentUser.restaurant_id);
       window.location.reload();
     } else {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
@@ -342,5 +349,3 @@ const SettingsSkeleton = () => (
         </Card>
     </div>
 );
-
-    

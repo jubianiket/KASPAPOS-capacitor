@@ -226,22 +226,26 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
+    // 1. Check if user already exists
     const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select('id')
         .or(`email.eq.${email},username.eq.${userData.username}`)
-        .single();
+        .maybeSingle();
 
-    if (existingUserError && existingUserError.code !== 'PGRST116') { // PGRST116: "exact one row expected"
+    // Handle unexpected errors during the check
+    if (existingUserError) {
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
 
+    // If a user is found, prevent new signup
     if (existingUser) {
-        console.error("User with this email or username already exists.", existingUserError);
+        console.error("User with this email or username already exists.");
         return null;
     }
 
+    // 2. Create a new restaurant for the user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -253,10 +257,11 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         return null;
     }
 
+    // 3. Create the new user with the restaurant_id
     const userToCreate = {
         ...userData,
         email,
-        password, 
+        password, // Storing plain text password as requested
         role: 'admin',
         restaurant_id: restaurantData.id,
     };
@@ -267,8 +272,9 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .select()
         .single();
 
-    if (userError) {
-        console.error("Error signing up:", userError);
+    if (userError || !newUser) {
+        console.error("Error creating user:", userError);
+        // Attempt to clean up the created restaurant if user creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         return null;
     }
@@ -317,7 +323,6 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    // This function now correctly passes the whole settings object.
     const { data, error } = await supabase
         .from('restaurants')
         .update(settings)
