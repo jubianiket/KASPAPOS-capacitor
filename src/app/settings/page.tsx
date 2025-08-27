@@ -99,25 +99,30 @@ export default function SettingsPage() {
   const isRestaurant = watch('is_restaurant');
 
   const onSubmit = async (data: SettingsFormData) => {
+    console.log("Save button clicked. Form data:", data);
     const userStr = localStorage.getItem('user');
     if (!userStr) {
         toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in.' });
+        console.error("No user found in localStorage.");
         return;
     }
     const currentUser = JSON.parse(userStr);
 
     if (!currentUser?.restaurant_id) {
        toast({ variant: 'destructive', title: 'Error', description: 'No restaurant associated with your account.' });
+       console.error("User object in localStorage is missing restaurant_id:", currentUser);
        return;
     }
 
+    console.log(`Calling updateSettings for restaurant_id: ${currentUser.restaurant_id}`);
     const updated = await updateSettings(currentUser.restaurant_id, data);
     
     if (updated) {
+      console.log("updateSettings returned successfully:", updated);
       toast({ title: 'Success', description: 'Settings saved successfully.' });
-      // Refetch settings to ensure form state is in sync with DB
-      await fetchSettings(currentUser.restaurant_id); 
+      await fetchSettings(currentUser.restaurant_id);
     } else {
+      console.error("updateSettings returned null or failed.");
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
   };

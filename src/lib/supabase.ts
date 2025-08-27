@@ -233,14 +233,11 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .or(`email.eq.${email},username.eq.${userData.username}`)
         .maybeSingle();
 
-    // A "PGRST116" error means no rows were found, which is what we want for a new signup.
-    // Any other error is a real problem.
     if (existingUserError && existingUserError.code !== 'PGRST116') {
         console.error("Error checking for existing user:", existingUserError);
         return null;
     }
     
-    // If we found a user, it's a duplicate.
     if (existingUser) {
         console.error("User with this email or username already exists.");
         return null;
@@ -285,37 +282,24 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (email: string, password: string): Promise<User | null> => {
-    // Step 1: Find the user by email
-    const { data: userAuthData, error: authError } = await supabase
-        .from('users')
-        .select('password')
-        .eq('email', email)
-        .single();
-
-    if (authError || !userAuthData) {
-        console.error("Error fetching user or user not found:", authError);
-        return null;
-    }
-    
-    // Step 2: Verify the password
-    if (userAuthData.password !== password) {
-        console.error("Password mismatch");
-        return null;
-    }
-    
-    // Step 3: If password is correct, fetch the full user profile to ensure all data is up-to-date
-    const { data: fullProfile, error: profileError } = await supabase
+    const { data: user, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .single();
 
-    if (profileError || !fullProfile) {
-        console.error("Could not fetch full user profile after sign in:", profileError);
-        return null; // This should ideally not happen if the previous step succeeded
+    if (error || !user) {
+        console.error("Error fetching user or user not found:", error);
+        return null;
     }
 
-    const { password: _, ...userWithoutPassword } = fullProfile;
+    if (user.password !== password) {
+        console.error("Password mismatch");
+        return null;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword as User;
 };
 
@@ -338,7 +322,8 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    // No need to clean the object here, Supabase handles undefined keys.
+    console.log("updateSettings called with:", { restaurantId, settings });
+
     const { data, error } = await supabase
         .from('restaurants')
         .update(settings)
@@ -351,5 +336,6 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
         return null;
     }
     
+    console.log("[updateSettings] Supabase returned:", data);
     return data as Restaurant | null;
 }
