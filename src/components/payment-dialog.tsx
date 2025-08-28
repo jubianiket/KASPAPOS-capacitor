@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { DollarSign, CreditCard, Smartphone, CheckCircle, Receipt } from 'lucide-react';
-import type { Order } from '@/types';
+import type { Order, Restaurant } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillReceipt } from './bill-receipt';
+import Image from 'next/image';
 
 interface PaymentDialogProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ interface PaymentDialogProps {
   disabled?: boolean;
   order: Order | null;
   onNewOrder: () => void;
+  settings: Restaurant | null;
 }
 
 export default function PaymentDialog({
@@ -33,6 +35,7 @@ export default function PaymentDialog({
   disabled = false,
   order,
   onNewOrder,
+  settings,
 }: PaymentDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<NonNullable<Order['payment_method']> | ''>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -90,6 +93,16 @@ export default function PaymentDialog({
                         <p className="text-sm text-muted-foreground">Total Amount Due</p>
                         <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
                     </div>
+
+                    {settings?.qr_code_url && (
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-sm font-medium">Scan to Pay</p>
+                        <div className="p-2 border rounded-md">
+                           <Image src={settings.qr_code_url} alt="Payment QR Code" width={200} height={200} data-ai-hint="QR code" />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-center">
                         <ToggleGroup 
                         type="single"

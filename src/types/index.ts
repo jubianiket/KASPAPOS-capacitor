@@ -78,4 +78,5 @@ export interface Restaurant {
     igst?: number;
     cgst?: number;
     table_count?: number;
+    qr_code_url?: string | null;
 }

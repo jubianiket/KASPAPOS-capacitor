@@ -267,6 +267,19 @@ export default function SettingsPage() {
                   Enter a HSL color value for the primary theme color. Find values using an online color picker.
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="qr_code_url">Payment QR Code URL</Label>
+                <Input
+                  id="qr_code_url"
+                  name="qr_code_url"
+                  value={settings.qr_code_url || ''}
+                  onChange={(e) => handleFieldChange('qr_code_url', e.target.value)}
+                  placeholder="https://example.com/your-qr-code.png"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste the URL of your hosted UPI/Payment QR code image.
+                </p>
+              </div>
            </div>
 
         </CardContent>

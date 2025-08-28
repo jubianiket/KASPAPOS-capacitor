@@ -135,6 +135,7 @@ export default function Bill({
                     onCompleteOrder={handleCompleteOrder} 
                     disabled={isPaymentDisabled()}
                     onNewOrder={onNewOrder}
+                    settings={settings}
                 >
                     <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
                     Proceed to Payment
@@ -235,5 +236,3 @@ export default function Bill({
     </Card>
   );
 }
-
-    
