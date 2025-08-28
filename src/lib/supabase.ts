@@ -330,25 +330,22 @@ export const signIn = async (identifier: string, password: string): Promise<User
 // --- Restaurant Settings ---
 
 export const getSettings = async (restaurantId: number): Promise<Restaurant | null> => {
-    console.log("[getSettings] Fetching for restaurant_id:", restaurantId);
     const { data, error } = await supabase
         .from('restaurants')
         .select('*')
         .eq('id', restaurantId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to prevent error when no settings exist
     
     if(error) {
         console.error("[getSettings] Error fetching settings:", error);
         return null;
     }
     
-    console.log("[getSettings] Fetched settings:", data);
     return data as Restaurant | null;
 }
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    console.log("[updateSettings] Attempting to update with:", { restaurantId, settings });
     const { id, ...settingsToUpdate } = settings;
 
     const { data, error } = await supabase
@@ -363,6 +360,5 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
         return null;
     }
     
-    console.log("[updateSettings] Success from Supabase:", data);
     return data as Restaurant | null;
 }

@@ -46,7 +46,6 @@ export default function SettingsPage() {
   }
 
   const fetchSettings = useCallback(async () => {
-    console.log("[SettingsPage] Fetching settings...");
     const userStr = localStorage.getItem('user');
     if (!userStr) {
       router.replace('/login');
@@ -63,9 +62,6 @@ export default function SettingsPage() {
     const fetchedSettings = await getSettings(user.restaurant_id);
     if (fetchedSettings) {
       setSettings(fetchedSettings);
-      console.log("[SettingsPage] Settings loaded:", fetchedSettings);
-    } else {
-        console.log("[SettingsPage] No settings found for restaurant ID:", user.restaurant_id);
     }
     setIsLoading(false);
   }, [router, toast]);
@@ -75,7 +71,6 @@ export default function SettingsPage() {
   }, [fetchSettings]);
 
   const handleSave = async () => {
-    console.log("[SettingsPage] Save button clicked.");
     setIsSaving(true);
     const userStr = localStorage.getItem('user');
     if (!userStr) {
@@ -91,15 +86,12 @@ export default function SettingsPage() {
        return;
     }
 
-    console.log(`[SettingsPage] Calling updateSettings for restaurant_id: ${currentUser.restaurant_id} with data:`, settings);
     const updated = await updateSettings(currentUser.restaurant_id, settings);
     
     if (updated) {
-      console.log("[SettingsPage] updateSettings returned successfully:", updated);
       toast({ title: 'Success', description: 'Settings saved successfully.' });
       await fetchSettings(); // Refresh settings from DB
     } else {
-      console.error("[SettingsPage] updateSettings returned null or failed.");
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
     setIsSaving(false);
@@ -281,7 +273,8 @@ export default function SettingsPage() {
                   name="theme_color"
                   value={settings.theme_color || ''} 
                   onChange={(e) => handleFieldChange('theme_color', e.target.value)} 
-                  placeholder="e.g., 240 5.9% 10%"/>
+                  placeholder="e.g., 240 5.9% 10%"
+                />
                  <p className="text-xs text-muted-foreground">
                   Enter a HSL color value for the primary theme color. Find values using an online color picker.
                 </p>
@@ -356,5 +349,3 @@ const SettingsSkeleton = () => (
         </Card>
     </div>
 );
-
-    
