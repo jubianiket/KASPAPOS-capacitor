@@ -32,12 +32,14 @@ export function BillReceipt({ order }: BillReceiptProps) {
         message += `Type: ${order.order_type}\n\n`;
         message += `*Items:*\n`;
         order.items.forEach(item => {
-            message += `- ${item.name} (x${item.quantity}) - Rs.${(item.rate * item.quantity).toFixed(2)}\n`;
+            message += `- ${item.name} (${item.quantity} x Rs.${item.rate.toFixed(2)}) - Rs.${(item.rate * item.quantity).toFixed(2)}\n`;
         });
         message += `\n*Subtotal:* Rs.${order.subtotal.toFixed(2)}\n`;
         message += `*Tax:* Rs.${order.tax.toFixed(2)}\n`;
         message += `*Total:* Rs.${order.total.toFixed(2)}\n`;
-        message += `*Paid via:* ${order.payment_method}\n\n`;
+        if (order.payment_method) {
+            message += `*Paid via:* ${order.payment_method}\n\n`;
+        }
         message += `_Thank you for your visit!_`;
         return encodeURIComponent(message);
     }
@@ -116,7 +118,7 @@ export function BillReceipt({ order }: BillReceiptProps) {
                 </div>
                  <Separator className="my-2" />
                  <div className="text-center">
-                    <p><strong>Paid via:</strong> {order.payment_method}</p>
+                    {order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>}
                     <p className="text-xs text-muted-foreground mt-2">Thank you for your visit!</p>
                 </div>
             </div>
