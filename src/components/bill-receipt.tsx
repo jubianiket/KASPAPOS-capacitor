@@ -109,10 +109,10 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
     return (
         <div className="space-y-4">
             <div id="receipt-container">
-                <div ref={receiptRef} className="text-sm p-4 bg-background">
+                <div ref={receiptRef} className="text-sm p-4 bg-background text-black">
                     <div className="text-center mb-4">
                         <h3 className="text-lg font-bold">KASPA POS</h3>
-                        <p className="text-xs text-muted-foreground">Receipt</p>
+                        <p className="text-xs text-gray-600">Receipt</p>
                     </div>
                     {settings?.qr_code_url && (
                       <div className="flex flex-col items-center gap-2 my-4">
@@ -134,7 +134,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             <div key={item.id} className="flex justify-between">
                                 <div>
                                     <p>{item.name}</p>
-                                    <p className="text-xs text-muted-foreground">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
+                                    <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
                                 </div>
                                 <p>Rs.{(item.quantity * item.rate).toFixed(2)}</p>
                             </div>
@@ -158,7 +158,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                      <Separator className="my-2" />
                      <div className="text-center">
                         {order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>}
-                        <p className="text-xs text-muted-foreground mt-2">Thank you for your visit!</p>
+                        <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
                     </div>
                 </div>
             </div>
