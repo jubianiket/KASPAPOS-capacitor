@@ -157,7 +157,14 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                     </div>
                      <Separator className="my-2" />
                      <div className="text-center">
-                        {order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>}
+                        {order.order_type === 'delivery' ? (
+                            <div className="space-y-1 text-xs">
+                                <p><strong>To be paid by Cash/UPI.</strong></p>
+                                <p className="text-gray-600">Please share a screenshot of the payment on WhatsApp.</p>
+                            </div>
+                        ) : (
+                            order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>
+                        )}
                         <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
                     </div>
                 </div>
