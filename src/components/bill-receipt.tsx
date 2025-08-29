@@ -35,8 +35,9 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             printWindow?.document.write('<html><head><title>Print Bill</title>');
             printWindow?.document.write(`
                 <style>
-                    body { font-family: sans-serif; margin: 20px; }
+                    body { font-family: sans-serif; margin: 20px; color: black !important; }
                     .receipt { border: 1px solid #ccc; padding: 15px; width: 300px; margin: 0 auto; background-color: white; color: black; }
+                    .receipt * { color: black !important; }
                     .header { text-align: center; }
                     .items-table { width: 100%; border-collapse: collapse; }
                     .items-table th, .items-table td { padding: 5px; text-align: left; }
@@ -128,6 +129,18 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
                         <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
                     </div>
+
+                    {order.order_type === 'delivery' && (
+                        <>
+                            <Separator className="my-2" />
+                            <div className="space-y-1">
+                                <h4 className="font-semibold">Delivery To:</h4>
+                                <p>{order.phone_no}</p>
+                                <p>{[order.flat_no, order.building_no, order.address].filter(Boolean).join(', ')}</p>
+                            </div>
+                        </>
+                    )}
+
                     <Separator className="my-2" />
                     <div>
                         {order.items.map(item => (
