@@ -1,27 +1,31 @@
 
 "use client";
 
-import { Order } from "@/types";
+import { Order, Restaurant } from "@/types";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Printer, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+
 
 interface BillReceiptProps {
     order: Order;
+    settings: Restaurant | null;
 }
 
-export function BillReceipt({ order }: BillReceiptProps) {
+export function BillReceipt({ order, settings }: BillReceiptProps) {
+    const { toast } = useToast();
 
     const formatDateTime = (dateString: string) => {
         if (typeof window === 'undefined') {
-            // Return a placeholder or the original string during SSR
             return new Date(dateString).toISOString(); 
         }
         const date = new Date(dateString);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
 
-    const generateWhatsAppMessage = () => {
+    const generateBillText = () => {
         const formattedDate = formatDateTime(order.created_at);
         let message = `*KASPA POS Bill*\n\n`;
         message += `Order ID: ${order.id}\n`;
@@ -41,7 +45,7 @@ export function BillReceipt({ order }: BillReceiptProps) {
             message += `*Paid via:* ${order.payment_method}\n\n`;
         }
         message += `_Thank you for your visit!_`;
-        return encodeURIComponent(message);
+        return message;
     }
 
     const handlePrint = () => {
@@ -49,7 +53,6 @@ export function BillReceipt({ order }: BillReceiptProps) {
         if (printableContent) {
             const printWindow = window.open('', '', 'height=600,width=800');
             printWindow?.document.write('<html><head><title>Print Bill</title>');
-            // A very basic styling for the print window
             printWindow?.document.write(`
                 <style>
                     body { font-family: sans-serif; margin: 20px; }
@@ -69,11 +72,63 @@ export function BillReceipt({ order }: BillReceiptProps) {
             printWindow?.print();
         }
     }
+    
+    // Function to convert Data URL to File object
+    const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File | null> => {
+        try {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            return new File([blob], fileName, { type: blob.type });
+        } catch (error) {
+            console.error('Error converting data URL to file:', error);
+            return null;
+        }
+    }
 
-    const handleShare = () => {
-        const message = generateWhatsAppMessage();
-        const whatsappUrl = `https://wa.me/?text=${message}`;
-        window.open(whatsappUrl, '_blank');
+    const handleShare = async () => {
+        const billText = generateBillText();
+        const qrUrl = settings?.qr_code_url;
+
+        // Check if Web Share API is available and there's a QR code to share
+        if (navigator.share && qrUrl) {
+            try {
+                let qrFile: File | null = null;
+                // If it's a data URL, convert it to a file
+                if (qrUrl.startsWith('data:')) {
+                    qrFile = await dataUrlToFile(qrUrl, `payment-qr-${order.id}.png`);
+                } else {
+                    // For regular URLs, we can't directly share them as files without downloading first,
+                    // which is complex. So we add it as a link in the text.
+                     const textWithLink = `${billText}\n\nScan our QR to pay: ${qrUrl}`;
+                     await navigator.share({ title: 'Your Bill', text: textWithLink });
+                     return;
+                }
+
+                if (qrFile && navigator.canShare({ files: [qrFile] })) {
+                     await navigator.share({
+                        title: `Bill for Order #${order.id}`,
+                        text: billText,
+                        files: [qrFile],
+                    });
+                } else {
+                    // Fallback if file sharing is not supported for this type or file is invalid
+                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(billText)}`;
+                     window.open(whatsappUrl, '_blank');
+                }
+
+            } catch (error) {
+                console.error('Error using Web Share API:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Sharing Failed',
+                    description: 'Could not share the bill.',
+                });
+            }
+        } else {
+            // Fallback for browsers that don't support Web Share API
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(billText)}`;
+            window.open(whatsappUrl, '_blank');
+        }
     }
 
     return (
@@ -83,6 +138,14 @@ export function BillReceipt({ order }: BillReceiptProps) {
                     <h3 className="text-lg font-bold">KASPA POS</h3>
                     <p className="text-xs text-muted-foreground">Receipt</p>
                 </div>
+                {settings?.qr_code_url && (
+                  <div className="flex flex-col items-center gap-2 my-4">
+                    <p className="text-sm font-medium">Scan to Pay</p>
+                    <div className="p-2 border rounded-md bg-white">
+                        <Image src={settings.qr_code_url} alt="Payment QR Code" width={150} height={150} data-ai-hint="QR code" />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-1">
                     <p><strong>Order ID:</strong> {order.id}</p>
                     <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>

@@ -97,7 +97,7 @@ export default function PaymentDialog({
                     {settings?.qr_code_url && (
                       <div className="flex flex-col items-center gap-2">
                         <p className="text-sm font-medium">Scan to Pay</p>
-                        <div className="p-2 border rounded-md">
+                        <div className="p-2 border rounded-md bg-white">
                            <Image src={settings.qr_code_url} alt="Payment QR Code" width={200} height={200} data-ai-hint="QR code" />
                         </div>
                       </div>
@@ -145,7 +145,7 @@ export default function PaymentDialog({
                     <DialogDescription>The order has been completed. You can print the bill or start a new order.</DialogDescription>
                 </DialogHeader>
                  <div className="py-4" id="receipt-section">
-                    <BillReceipt order={completedOrder} />
+                    <BillReceipt order={completedOrder} settings={settings} />
                  </div>
                 <DialogFooter className="sm:justify-between gap-2">
                     <Button onClick={handleDialogCloseAndNewOrder} variant="secondary">
