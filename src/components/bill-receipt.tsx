@@ -111,7 +111,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             <div id="receipt-container">
                 <div ref={receiptRef} className="text-sm p-4 bg-background text-black">
                     <div className="text-center mb-4">
-                        <h3 className="text-lg font-bold">KASPA POS</h3>
+                        <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
                         <p className="text-xs text-gray-600">Receipt</p>
                     </div>
                     {settings?.qr_code_url && (
