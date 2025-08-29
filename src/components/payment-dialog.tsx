@@ -94,7 +94,7 @@ export default function PaymentDialog({
                         <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
                     </div>
 
-                    {settings?.qr_code_url && (
+                    {settings?.qr_code_url && order?.order_type === 'delivery' && (
                       <div className="flex flex-col items-center gap-2">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">

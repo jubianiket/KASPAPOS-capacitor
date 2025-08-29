@@ -114,7 +114,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
                         <p className="text-xs text-gray-600">Receipt</p>
                     </div>
-                    {settings?.qr_code_url && (
+                    {settings?.qr_code_url && order.order_type === 'delivery' && (
                       <div className="flex flex-col items-center gap-2 my-4">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">
