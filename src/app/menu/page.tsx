@@ -9,10 +9,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Search } from 'lucide-react';
 import MenuManagementGrid from '@/components/menu-management-grid';
 import MenuItemFormDialog from '@/components/menu-item-form-dialog';
 import { useData } from '@/hooks/use-data';
+import { Input } from '@/components/ui/input';
 
 export default function MenuPage() {
   const { menuItems, isMenuLoading, onRefreshMenu } = useData();
@@ -22,6 +23,7 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const router = useRouter();
   const { toast } = useToast();
@@ -48,8 +50,16 @@ export default function MenuPage() {
   
   const groupedMenuItems = useMemo<GroupedMenuItem[]>(() => {
     if (!menuItems) return [];
+    
+    let itemsToGroup = menuItems;
+    if (searchTerm) {
+        itemsToGroup = menuItems.filter(item => 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+    
     const itemMap = new Map<string, GroupedMenuItem>();
-    menuItems.forEach(item => {
+    itemsToGroup.forEach(item => {
       let group = itemMap.get(item.name);
       if (!group) {
         group = {
@@ -63,7 +73,7 @@ export default function MenuPage() {
       group.portions.push(item);
     });
     return Array.from(itemMap.values());
-  }, [menuItems]);
+  }, [menuItems, searchTerm]);
 
   const handleCategoryChange = (value: string) => {
     if (value) {
@@ -142,9 +152,18 @@ export default function MenuPage() {
           Add New Item
         </Button>
       </div>
-
-       <div className="mb-6">
-         <div className="flex justify-between items-center mb-3">
+      
+       <div className="mb-6 space-y-4">
+         <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+                placeholder="Search for menu items..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+         </div>
+         <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Menu Categories</h3>
         </div>
         <ToggleGroup 

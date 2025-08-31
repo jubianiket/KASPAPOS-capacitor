@@ -8,7 +8,7 @@ import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order, User, Restaurant } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Utensils, Bike } from 'lucide-react';
+import { Utensils, Bike, Search } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
@@ -16,6 +16,7 @@ import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSetting
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
+import { Input } from '@/components/ui/input';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -29,6 +30,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const router = useRouter();
   const { toast } = useToast();
@@ -39,8 +41,12 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const menuItems = useMemo(() => {
-    return allMenuItems.filter(item => item.is_active);
-  }, [allMenuItems]);
+    let items = allMenuItems.filter(item => item.is_active);
+    if(searchTerm) {
+      items = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return items;
+  }, [allMenuItems, searchTerm]);
 
 
   const fetchInitialData = useCallback(async (restaurantId: number) => {
@@ -479,8 +485,18 @@ export default function Home() {
                 )}
               </div>
             )}
-            <div className="mb-6">
-                 <div className="flex justify-between items-center mb-3">
+            <div className="mb-6 space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search for menu items..."
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold">Menu Categories</h3>
                     <CustomItemDialog onAddItem={addCustomItemToOrder} />
                 </div>
