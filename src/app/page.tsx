@@ -100,11 +100,9 @@ export default function Home() {
       } else {
         setActiveOrder(null);
       }
-    } else { // Delivery
-        // Allow creating a new delivery order, or view the first non-completed one
-        const deliveryOrder = activeOrders.find(o => o.order_type === 'delivery' && o.payment_status !== 'paid');
-        setActiveOrder(deliveryOrder || null);
     }
+    // For delivery, we no longer auto-select an order.
+    // The user must explicitly select an active order or start adding items to create a new one.
   }, [tableNumber, orderType, activeOrders]);
   
   const handleSelectOrder = (orderId: number) => {
@@ -541,5 +539,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

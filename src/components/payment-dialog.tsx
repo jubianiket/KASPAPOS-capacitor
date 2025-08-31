@@ -75,7 +75,7 @@ export default function PaymentDialog({
 
   const handleDialogCloseAndNewOrder = () => {
     setIsOpen(false);
-    onNewOrder();
+    // onNewOrder is now called when the dialog closes after showing the receipt
   }
 
   return (

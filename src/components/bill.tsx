@@ -86,8 +86,11 @@ export default function Bill({
   };
 
   const getOrderTitle = () => {
-    if (!order) return 'No Order Selected';
-    if (order.order_type === 'delivery') return 'Delivery Order';
+    if (!order) return 'New Order';
+    if (order.order_type === 'delivery') {
+       if (order.id < 0) return 'New Delivery Order';
+       return `Delivery Order #${order.id.toString().slice(-4)}`;
+    }
     if (order.table_number) return `Order for Table ${order.table_number}`;
     return 'Select a Table';
   }
@@ -110,12 +113,9 @@ export default function Bill({
     
     if (order.payment_status === 'paid') {
         return (
-            <div className="text-center w-full">
-                <p className="text-lg font-semibold text-green-600 flex items-center justify-center gap-2">
-                    <CheckCheck className="h-6 w-6" />
-                    Payment Received
-                </p>
-            </div>
+             <Button className="w-full" onClick={onNewOrder}>
+                Start New Order
+            </Button>
         );
     }
 
