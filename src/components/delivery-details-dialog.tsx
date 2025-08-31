@@ -42,11 +42,11 @@ export default function DeliveryDetailsDialog({
   };
 
   const handleConfirm = () => {
-    if (!details.phone_no || !details.address) {
+    if (!details.phone_no || !details.flat_no) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Phone number and address are required.',
+        description: 'Phone number and Flat / Apt Number are required.',
       });
       return;
     }
@@ -82,11 +82,12 @@ export default function DeliveryDetailsDialog({
                 value={details.flat_no}
                 onChange={handleChange}
                 placeholder="e.g., 4B"
+                required
               />
             </div>
           </div>
           <div className="space-y-2">
-              <Label htmlFor="building_no">Building Name / Number</Label>
+              <Label htmlFor="building_no">Building Name / Number (Optional)</Label>
               <Input
                 id="building_no"
                 value={details.building_no}
@@ -95,13 +96,12 @@ export default function DeliveryDetailsDialog({
               />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="address">Street Address</Label>
+            <Label htmlFor="address">Street Address (Optional)</Label>
             <Input
               id="address"
               value={details.address}
               onChange={handleChange}
               placeholder="e.g., 123 Main Street"
-              required
             />
           </div>
         </div>
