@@ -55,16 +55,23 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             printWindow?.print();
         }
     }
+
+    const dataURLtoFile = (dataurl: string, filename: string) => {
+        const arr = dataurl.split(',');
+        if (arr.length < 2) return undefined;
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (!mimeMatch) return undefined;
+        const mime = mimeMatch[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+    }
     
     const handleShare = async () => {
-        if (!Capacitor.isNativePlatform()) {
-             toast({
-                title: 'Sharing Not Supported',
-                description: 'Sharing bill images is only available on the mobile app.',
-            });
-            return;
-        }
-        
         if (!receiptRef.current) {
             toast({
                 variant: 'destructive',
@@ -80,20 +87,39 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 quality: 0.95,
                 backgroundColor: 'white'
             });
-            
-            await Share.share({
-                title: `Bill for Order #${order.id}`,
-                text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
-                url: dataUrl,
-                dialogTitle: 'Share Bill',
-            });
+
+            if (Capacitor.isNativePlatform()) {
+                // Native sharing supports data URLs directly
+                await Share.share({
+                    title: `Bill for Order #${order.id}`,
+                    text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
+                    url: dataUrl,
+                    dialogTitle: 'Share Bill',
+                });
+            } else {
+                 // Web Share API needs a File object
+                const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
+                if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                     await Share.share({
+                        title: `Bill for Order #${order.id}`,
+                        text: `Here is your bill.`,
+                        files: [file],
+                    });
+                } else {
+                    toast({
+                        title: 'Sharing Not Supported',
+                        description: 'Your browser does not support sharing files.',
+                    });
+                }
+            }
 
         } catch (error) {
             console.error('Error sharing bill image:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Could not share the bill image.';
             toast({
                 variant: 'destructive',
                 title: 'Sharing Failed',
-                description: 'Could not share the bill image.',
+                description: errorMessage,
             });
         }
     }
