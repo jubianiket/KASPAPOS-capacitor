@@ -162,6 +162,20 @@ export default function SettingsPage() {
           </div>
           
           <Separator />
+          
+          <div className="space-y-4">
+              <h3 className="text-lg font-medium">Operational Settings</h3>
+              <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="kds_enabled" 
+                    checked={!!settings.kds_enabled} 
+                    onCheckedChange={(checked) => handleFieldChange('kds_enabled', checked)} 
+                  />
+                  <Label htmlFor="kds_enabled">Enable Kitchen Display System (KDS)</Label>
+              </div>
+          </div>
+
+          <Separator />
 
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Business Type</h3>
