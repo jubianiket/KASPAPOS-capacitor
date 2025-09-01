@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
 import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 
 interface BillReceiptProps {
@@ -56,6 +57,14 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
     }
     
     const handleShare = async () => {
+        if (!Capacitor.isNativePlatform()) {
+             toast({
+                title: 'Sharing Not Supported',
+                description: 'Sharing bill images is only available on the mobile app.',
+            });
+            return;
+        }
+        
         if (!receiptRef.current) {
             toast({
                 variant: 'destructive',
@@ -75,26 +84,17 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             await Share.share({
                 title: `Bill for Order #${order.id}`,
                 text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
-                url: dataUrl, // Capacitor Share plugin can handle base64 data URLs
+                url: dataUrl,
                 dialogTitle: 'Share Bill',
             });
 
         } catch (error) {
             console.error('Error sharing bill image:', error);
-            // Check if the error is a "not implemented" error, which means it's not in a Capacitor environment
-            if (error instanceof Error && error.message.includes("not implemented")) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Sharing Not Supported',
-                    description: 'Sharing is only available on the mobile app.',
-                });
-            } else {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Sharing Failed',
-                    description: 'Could not share the bill image.',
-                });
-            }
+            toast({
+                variant: 'destructive',
+                title: 'Sharing Failed',
+                description: 'Could not share the bill image.',
+            });
         }
     }
 
