@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import Image from 'next/image';
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -26,8 +27,25 @@ export default function SettingsPage() {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleQrCodeUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        toast({ variant: 'destructive', title: 'Error', description: 'File size should not exceed 1MB.' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleFieldChange('qr_code_url', reader.result as string);
+      };
+      reader.onerror = () => {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to read the file.' });
+      }
+      reader.readAsDataURL(file);
+    }
+  }
+
   const fetchSettings = useCallback(async () => {
-    console.log("[SettingsPage] Fetching settings...");
     const userStr = localStorage.getItem('user');
     if (!userStr) {
       router.replace('/login');
@@ -44,9 +62,6 @@ export default function SettingsPage() {
     const fetchedSettings = await getSettings(user.restaurant_id);
     if (fetchedSettings) {
       setSettings(fetchedSettings);
-      console.log("[SettingsPage] Settings loaded:", fetchedSettings);
-    } else {
-        console.log("[SettingsPage] No settings found for restaurant ID:", user.restaurant_id);
     }
     setIsLoading(false);
   }, [router, toast]);
@@ -56,7 +71,6 @@ export default function SettingsPage() {
   }, [fetchSettings]);
 
   const handleSave = async () => {
-    console.log("[SettingsPage] Save button clicked.");
     setIsSaving(true);
     const userStr = localStorage.getItem('user');
     if (!userStr) {
@@ -72,15 +86,12 @@ export default function SettingsPage() {
        return;
     }
 
-    console.log(`[SettingsPage] Calling updateSettings for restaurant_id: ${currentUser.restaurant_id} with data:`, settings);
     const updated = await updateSettings(currentUser.restaurant_id, settings);
     
     if (updated) {
-      console.log("[SettingsPage] updateSettings returned successfully:", updated);
       toast({ title: 'Success', description: 'Settings saved successfully.' });
       await fetchSettings(); // Refresh settings from DB
     } else {
-      console.error("[SettingsPage] updateSettings returned null or failed.");
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
     setIsSaving(false);
@@ -262,10 +273,48 @@ export default function SettingsPage() {
                   name="theme_color"
                   value={settings.theme_color || ''} 
                   onChange={(e) => handleFieldChange('theme_color', e.target.value)} 
-                  placeholder="e.g., 240 5.9% 10%"/>
+                  placeholder="e.g., 240 5.9% 10%"
+                />
                  <p className="text-xs text-muted-foreground">
                   Enter a HSL color value for the primary theme color. Find values using an online color picker.
                 </p>
+              </div>
+              <div className="space-y-4">
+                <Label>Payment QR Code</Label>
+                <div className="flex items-center gap-4">
+                    {settings.qr_code_url && (
+                        <div className="p-2 border rounded-md bg-muted">
+                           <Image src={settings.qr_code_url} alt="Current QR Code" width={80} height={80} data-ai-hint="QR code"/>
+                        </div>
+                    )}
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                        <Label htmlFor="qr-code-upload" className="text-sm font-normal text-muted-foreground">Upload new QR code</Label>
+                        <Input id="qr-code-upload" type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={handleQrCodeUpload} />
+                    </div>
+                </div>
+                 <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                        Or
+                        </span>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="qr_code_url">Paste Image URL</Label>
+                    <Input
+                      id="qr_code_url"
+                      name="qr_code_url"
+                      value={settings.qr_code_url && !settings.qr_code_url.startsWith('data:') ? settings.qr_code_url : ''}
+                      onChange={(e) => handleFieldChange('qr_code_url', e.target.value)}
+                      placeholder="https://example.com/your-qr-code.png"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Paste the URL of your hosted UPI/Payment QR code image.
+                    </p>
+                </div>
               </div>
            </div>
 

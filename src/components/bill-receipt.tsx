@@ -1,57 +1,43 @@
 
 "use client";
 
-import { Order } from "@/types";
+import { useRef } from 'react';
+import { Order, Restaurant } from "@/types";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Printer, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import * as htmlToImage from 'html-to-image';
+
 
 interface BillReceiptProps {
     order: Order;
+    settings: Restaurant | null;
 }
 
-export function BillReceipt({ order }: BillReceiptProps) {
+export function BillReceipt({ order, settings }: BillReceiptProps) {
+    const { toast } = useToast();
+    const receiptRef = useRef<HTMLDivElement>(null);
 
     const formatDateTime = (dateString: string) => {
         if (typeof window === 'undefined') {
-            // Return a placeholder or the original string during SSR
             return new Date(dateString).toISOString(); 
         }
         const date = new Date(dateString);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
 
-    const generateWhatsAppMessage = () => {
-        const formattedDate = formatDateTime(order.created_at);
-        let message = `*KASPA POS Bill*\n\n`;
-        message += `Order ID: ${order.id}\n`;
-        message += `Date: ${formattedDate}\n`;
-        if (order.order_type === 'dine-in') {
-            message += `Table: ${order.table_number}\n`;
-        }
-        message += `Type: ${order.order_type}\n\n`;
-        message += `*Items:*\n`;
-        order.items.forEach(item => {
-            message += `- ${item.name} (x${item.quantity}) - Rs.${(item.rate * item.quantity).toFixed(2)}\n`;
-        });
-        message += `\n*Subtotal:* Rs.${order.subtotal.toFixed(2)}\n`;
-        message += `*Tax:* Rs.${order.tax.toFixed(2)}\n`;
-        message += `*Total:* Rs.${order.total.toFixed(2)}\n`;
-        message += `*Paid via:* ${order.payment_method}\n\n`;
-        message += `_Thank you for your visit!_`;
-        return encodeURIComponent(message);
-    }
-
     const handlePrint = () => {
-        const printableContent = document.getElementById(`printable-receipt-${order.id}`);
+        const printableContent = receiptRef.current;
         if (printableContent) {
             const printWindow = window.open('', '', 'height=600,width=800');
             printWindow?.document.write('<html><head><title>Print Bill</title>');
-            // A very basic styling for the print window
             printWindow?.document.write(`
                 <style>
-                    body { font-family: sans-serif; margin: 20px; }
-                    .receipt { border: 1px solid #ccc; padding: 15px; width: 300px; margin: 0 auto; }
+                    body { font-family: sans-serif; margin: 20px; color: black !important; }
+                    .receipt { border: 1px solid #ccc; padding: 15px; width: 300px; margin: 0 auto; background-color: white; color: black; }
+                    .receipt * { color: black !important; }
                     .header { text-align: center; }
                     .items-table { width: 100%; border-collapse: collapse; }
                     .items-table th, .items-table td { padding: 5px; text-align: left; }
@@ -67,57 +53,133 @@ export function BillReceipt({ order }: BillReceiptProps) {
             printWindow?.print();
         }
     }
+    
+    // Function to convert Data URL to File object
+    const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File | null> => {
+        try {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            return new File([blob], fileName, { type: blob.type });
+        } catch (error) {
+            console.error('Error converting data URL to file:', error);
+            return null;
+        }
+    }
 
-    const handleShare = () => {
-        const message = generateWhatsAppMessage();
-        const whatsappUrl = `https://wa.me/?text=${message}`;
-        window.open(whatsappUrl, '_blank');
+    const handleShare = async () => {
+        if (!receiptRef.current) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not generate bill image.'
+            });
+            return;
+        }
+
+        try {
+            const dataUrl = await htmlToImage.toPng(receiptRef.current, { 
+                cacheBust: true, 
+                quality: 0.95,
+                backgroundColor: 'white'
+            });
+            const file = await dataUrlToFile(dataUrl, `bill-${order.id}.png`);
+            
+            if (navigator.share && file && navigator.canShare({ files: [file] })) {
+                 await navigator.share({
+                    title: `Bill for Order #${order.id}`,
+                    text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
+                    files: [file],
+                });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Sharing Not Supported',
+                    description: 'Your browser does not support sharing files.',
+                });
+            }
+        } catch (error) {
+            console.error('Error sharing bill image:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Sharing Failed',
+                description: 'Could not share the bill image.',
+            });
+        }
     }
 
     return (
         <div className="space-y-4">
-            <div id={`printable-receipt-${order.id}`} className="text-sm">
-                <div className="text-center mb-4">
-                    <h3 className="text-lg font-bold">KASPA POS</h3>
-                    <p className="text-xs text-muted-foreground">Receipt</p>
-                </div>
-                <div className="space-y-1">
-                    <p><strong>Order ID:</strong> {order.id}</p>
-                    <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>
-                    {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
-                    <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
-                </div>
-                <Separator className="my-2" />
-                <div>
-                    {order.items.map(item => (
-                        <div key={item.id} className="flex justify-between">
-                            <div>
-                                <p>{item.name}</p>
-                                <p className="text-xs text-muted-foreground">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
-                            </div>
-                            <p>Rs.{(item.quantity * item.rate).toFixed(2)}</p>
+            <div id="receipt-container">
+                <div ref={receiptRef} className="text-sm p-4 bg-background text-black">
+                    <div className="text-center mb-4">
+                        <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
+                        <p className="text-xs text-gray-600">Receipt</p>
+                    </div>
+                    {settings?.qr_code_url && order.order_type === 'delivery' && (
+                      <div className="flex flex-col items-center gap-2 my-4">
+                        <p className="text-sm font-medium">Scan to Pay</p>
+                        <div className="p-2 border rounded-md bg-white">
+                            <Image src={settings.qr_code_url} alt="Payment QR Code" width={150} height={150} data-ai-hint="QR code" />
                         </div>
-                    ))}
-                </div>
-                <Separator className="my-2" />
-                <div className="space-y-1">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>Rs.{order.subtotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                        <p><strong>Order ID:</strong> {order.id}</p>
+                        <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>
+                        {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
+                        <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
                     </div>
-                    <div className="flex justify-between">
-                        <span>Tax</span>
-                        <span>Rs.{order.tax.toFixed(2)}</span>
+
+                    {order.order_type === 'delivery' && (
+                        <>
+                            <Separator className="my-2" />
+                            <div className="space-y-1">
+                                <h4 className="font-semibold">Delivery To:</h4>
+                                <p>{order.phone_no}</p>
+                                <p>{[order.flat_no, order.building_no, order.address].filter(Boolean).join(', ')}</p>
+                            </div>
+                        </>
+                    )}
+
+                    <Separator className="my-2" />
+                    <div>
+                        {order.items.map(item => (
+                            <div key={item.id} className="flex justify-between">
+                                <div>
+                                    <p>{item.name}</p>
+                                    <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
+                                </div>
+                                <p>Rs.{(item.quantity * item.rate).toFixed(2)}</p>
+                            </div>
+                        ))}
                     </div>
-                    <div className="flex justify-between font-bold text-base">
-                        <span>Total</span>
-                        <span>Rs.{order.total.toFixed(2)}</span>
+                    <Separator className="my-2" />
+                    <div className="space-y-1">
+                        <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>Rs.{order.subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Tax</span>
+                            <span>Rs.{order.tax.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-base">
+                            <span>Total</span>
+                            <span>Rs.{order.total.toFixed(2)}</span>
+                        </div>
                     </div>
-                </div>
-                 <Separator className="my-2" />
-                 <div className="text-center">
-                    <p><strong>Paid via:</strong> {order.payment_method}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Thank you for your visit!</p>
+                     <Separator className="my-2" />
+                     <div className="text-center">
+                        {order.order_type === 'delivery' ? (
+                            <div className="space-y-1 text-xs">
+                                <p><strong>To be paid by Cash/UPI.</strong></p>
+                                <p className="text-gray-600">Please share a screenshot of the payment on WhatsApp.</p>
+                            </div>
+                        ) : (
+                            order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>
+                        )}
+                        <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
+                    </div>
                 </div>
             </div>
              <div className="flex justify-end gap-2 mt-4">
