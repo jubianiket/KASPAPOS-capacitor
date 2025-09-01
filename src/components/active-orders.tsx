@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,10 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
       return `Delivery #${order.id.toString().slice(-4)}`;
     }
     return `Table ${order.table_number}`;
+  }
+  
+  if (orders.length === 0) {
+    return null;
   }
 
   return (

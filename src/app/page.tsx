@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -8,7 +7,7 @@ import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order, User, Restaurant } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Utensils, Bike, Search } from 'lucide-react';
+import { Utensils, Bike, Search, PlusCircle } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
@@ -17,6 +16,7 @@ import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -408,6 +408,12 @@ export default function Home() {
     }
   };
   
+  const handleNewDeliveryOrder = () => {
+    setActiveOrder(null);
+    setTableNumber(null);
+    setOrderType('Delivery');
+  };
+
   if (!isClient) {
     return (
         <div className="flex justify-center items-center h-screen">
@@ -448,11 +454,17 @@ export default function Home() {
                   <Bike /> Delivery
                 </ToggleGroupItem>
               </ToggleGroup>
+               {orderType === 'Delivery' && (
+                  <Button variant="outline" onClick={handleNewDeliveryOrder}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Delivery
+                  </Button>
+                )}
             </div>
             {isClient && !pageIsLoading && activeOrders.length > 0 && (
                 <div className="mb-6">
                    <ActiveOrders 
-                        orders={activeOrders} 
+                        orders={activeOrders.filter(o => o.order_type === (orderType === 'Dine In' ? 'dine-in' : 'delivery'))} 
                         onSelectOrder={handleSelectOrder}
                         activeOrderId={activeOrder?.id}
                    />
