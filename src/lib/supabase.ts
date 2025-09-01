@@ -346,7 +346,9 @@ export const getSettings = async (restaurantId: number): Promise<Restaurant | nu
 
 
 export const updateSettings = async (restaurantId: number, settings: Partial<Restaurant>): Promise<Restaurant | null> => {
-    const { id, ...settingsToUpdate } = settings;
+    const settingsToUpdate = { ...settings };
+    // The 'id' field should never be part of the update payload.
+    delete settingsToUpdate.id;
 
     const { data, error } = await supabase
         .from('restaurants')
