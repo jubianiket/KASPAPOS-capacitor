@@ -89,7 +89,6 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             });
 
             if (Capacitor.isNativePlatform()) {
-                // Native sharing supports data URLs directly
                 await Share.share({
                     title: `Bill for Order #${order.id}`,
                     text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
@@ -97,10 +96,9 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                     dialogTitle: 'Share Bill',
                 });
             } else {
-                 // Web Share API needs a File object
                 const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
                 if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-                     await Share.share({
+                     await navigator.share({
                         title: `Bill for Order #${order.id}`,
                         text: `Here is your bill.`,
                         files: [file],
@@ -108,7 +106,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 } else {
                     toast({
                         title: 'Sharing Not Supported',
-                        description: 'Your browser does not support sharing files.',
+                        description: 'Your browser does not support sharing files. Try on the mobile app!',
                     });
                 }
             }
