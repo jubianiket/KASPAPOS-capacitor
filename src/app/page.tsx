@@ -177,24 +177,17 @@ export default function Home() {
       const savedMainOrder = await updateAndSaveOrder(confirmedOrderData);
       
       if (savedMainOrder) {
-          if (settings?.kds_enabled) {
-              const kitchenOrder = await createKitchenOrder(savedMainOrder);
-              if (kitchenOrder) {
-                  toast({
-                      title: 'Order Confirmed',
-                      description: 'The order has been sent to the kitchen.'
-                  });
-              } else {
-                  toast({
-                      variant: 'destructive',
-                      title: 'Kitchen Order Failed',
-                      description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
-                  });
-              }
-          } else {
-               toast({
+          const kitchenOrder = await createKitchenOrder(savedMainOrder);
+          if (kitchenOrder) {
+              toast({
                   title: 'Order Confirmed',
-                  description: 'The order has been confirmed successfully.'
+                  description: 'The order has been sent to the kitchen.'
+              });
+          } else {
+              toast({
+                  variant: 'destructive',
+                  title: 'Kitchen Order Failed',
+                  description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
               });
           }
       }
@@ -559,3 +552,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
