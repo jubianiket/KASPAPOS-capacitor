@@ -9,6 +9,7 @@ import { Printer, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
+import { Share } from '@capacitor/share';
 
 
 interface BillReceiptProps {
@@ -54,18 +55,6 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         }
     }
     
-    // Function to convert Data URL to File object
-    const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File | null> => {
-        try {
-            const res = await fetch(dataUrl);
-            const blob = await res.blob();
-            return new File([blob], fileName, { type: blob.type });
-        } catch (error) {
-            console.error('Error converting data URL to file:', error);
-            return null;
-        }
-    }
-
     const handleShare = async () => {
         if (!receiptRef.current) {
             toast({
@@ -82,28 +71,30 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 quality: 0.95,
                 backgroundColor: 'white'
             });
-            const file = await dataUrlToFile(dataUrl, `bill-${order.id}.png`);
             
-            if (navigator.share && file && navigator.canShare({ files: [file] })) {
-                 await navigator.share({
-                    title: `Bill for Order #${order.id}`,
-                    text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
-                    files: [file],
+            await Share.share({
+                title: `Bill for Order #${order.id}`,
+                text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
+                url: dataUrl, // Capacitor Share plugin can handle base64 data URLs
+                dialogTitle: 'Share Bill',
+            });
+
+        } catch (error) {
+            console.error('Error sharing bill image:', error);
+            // Check if the error is a "not implemented" error, which means it's not in a Capacitor environment
+            if (error instanceof Error && error.message.includes("not implemented")) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Sharing Not Supported',
+                    description: 'Sharing is only available on the mobile app.',
                 });
             } else {
                  toast({
                     variant: 'destructive',
-                    title: 'Sharing Not Supported',
-                    description: 'Your browser does not support sharing files.',
+                    title: 'Sharing Failed',
+                    description: 'Could not share the bill image.',
                 });
             }
-        } catch (error) {
-            console.error('Error sharing bill image:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Sharing Failed',
-                description: 'Could not share the bill image.',
-            });
         }
     }
 
