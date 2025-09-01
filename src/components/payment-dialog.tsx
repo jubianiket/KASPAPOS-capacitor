@@ -61,21 +61,19 @@ export default function PaymentDialog({
   const handleOpenChange = (open: boolean) => {
     if (disabled || isProcessing) return;
     setIsOpen(open);
-     if (!open && view === 'receipt') {
-        // If we close the dialog from the receipt view, trigger a new order.
-        onNewOrder();
+    if (!open) {
+        // Reset state on close, regardless of view
+        setTimeout(() => {
+            setView('payment');
+            setPaymentMethod('');
+            setCompletedOrder(null);
+        }, 200);
     }
-    // Reset state on close
-    setTimeout(() => {
-        setView('payment');
-        setPaymentMethod('');
-        setCompletedOrder(null);
-    }, 200);
   }
 
   const handleDialogCloseAndNewOrder = () => {
+    onNewOrder();
     setIsOpen(false);
-    // onNewOrder is now called when the dialog closes after showing the receipt
   }
 
   return (
