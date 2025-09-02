@@ -24,6 +24,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
     const formatDateTime = (dateString: string) => {
         if (typeof window === 'undefined') {
+            // Fallback for server-side rendering
             return new Date(dateString).toISOString(); 
         }
         const date = new Date(dateString);
@@ -101,6 +102,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
         } catch (error: any) {
             if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
+              // Ignore user cancellation
               return;
             }
             console.error('Share failed', error);
@@ -116,12 +118,13 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
     return (
         <div className="space-y-4">
             <div id="receipt-container">
-                <div ref={receiptRef} className="text-sm p-4 bg-background text-black">
+                <div ref={receiptRef} className="text-sm p-4 bg-background text-black" style={{ color: 'black' }}>
                     <div className="text-center mb-4">
                         <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
                         <p className="text-xs text-gray-600">Receipt</p>
                     </div>
-                    {settings?.qr_code_url && order.order_type === 'delivery' && (
+
+                    {settings?.qr_code_url && (
                       <div className="flex flex-col items-center gap-2 my-4">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">
@@ -129,28 +132,30 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         </div>
                       </div>
                     )}
+                    
                     <div className="space-y-1">
                         <p><strong>Order ID:</strong> {order.id}</p>
                         <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>
-                        {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
                         <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
+                         {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
                     </div>
 
                     {order.order_type === 'delivery' && (
                         <>
-                            <Separator className="my-2" />
+                            <Separator className="my-2 bg-gray-400" />
                             <div className="space-y-1">
                                 <h4 className="font-semibold">Delivery To:</h4>
-                                <p>{order.phone_no}</p>
-                                <p>{[order.flat_no, order.building_no, order.address].filter(Boolean).join(', ')}</p>
+                                {order.phone_no && <p>{order.phone_no}</p>}
+                                {order.flat_no && <p>{order.flat_no}</p>}
+                                {[order.building_no, order.address].filter(Boolean).join(', ') && <p>{[order.building_no, order.address].filter(Boolean).join(', ')}</p>}
                             </div>
                         </>
                     )}
 
-                    <Separator className="my-2" />
+                    <Separator className="my-2 bg-gray-400" />
                     <div>
-                        {order.items.map(item => (
-                            <div key={item.id} className="flex justify-between">
+                        {order.items.map((item, index) => (
+                            <div key={`${item.id}-${index}`} className="flex justify-between">
                                 <div>
                                     <p>{item.name}</p>
                                     <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
@@ -159,7 +164,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             </div>
                         ))}
                     </div>
-                    <Separator className="my-2" />
+                    <Separator className="my-2 bg-gray-400" />
                     <div className="space-y-1">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
@@ -174,15 +179,15 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             <span>Rs.{order.total.toFixed(2)}</span>
                         </div>
                     </div>
-                     <Separator className="my-2" />
-                     <div className="text-center">
-                        {order.order_type === 'delivery' ? (
-                            <div className="space-y-1 text-xs">
-                                <p><strong>To be paid by Cash/UPI.</strong></p>
+                     <Separator className="my-2 bg-gray-400" />
+                     <div className="text-center mt-4">
+                        {order.payment_method ? (
+                             <p><strong>Paid via:</strong> {order.payment_method}</p>
+                        ) : (
+                           <div className="space-y-1 text-xs">
+                                <p className="font-bold">To be paid by Cash/UPI.</p>
                                 <p className="text-gray-600">Please share a screenshot of the payment on WhatsApp.</p>
                             </div>
-                        ) : (
-                            order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>
                         )}
                         <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
                     </div>
