@@ -83,32 +83,31 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
         try {
             const dataUrl = await htmlToImage.toPng(receiptRef.current, { 
-                cacheBust: true, 
+                cacheBust: true,
                 quality: 0.95,
                 backgroundColor: 'white'
             });
 
             if (Capacitor.isNativePlatform()) {
-                await Share.share({
+                toast({
+                    title: 'Feature Not Available',
+                    description: 'Image sharing is only available on the web version.'
+                });
+                return;
+            }
+
+            const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
+            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
                     title: `Bill for Order #${order.id}`,
-                    text: `Here is your bill for Order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
-                    url: dataUrl,
-                    dialogTitle: 'Share Bill',
+                    text: `Here is your bill.`,
+                    files: [file],
                 });
             } else {
-                const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
-                if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-                     await navigator.share({
-                        title: `Bill for Order #${order.id}`,
-                        text: `Here is your bill.`,
-                        files: [file],
-                    });
-                } else {
-                    toast({
-                        title: 'Sharing Not Supported',
-                        description: 'Your browser does not support sharing files. Try on the mobile app!',
-                    });
-                }
+                toast({
+                    title: 'Sharing Not Supported',
+                    description: 'Your browser does not support sharing files. Please try a different browser.',
+                });
             }
 
         } catch (error) {
