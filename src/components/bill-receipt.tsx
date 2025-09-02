@@ -45,7 +45,6 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                     .items-table { width: 100%; border-collapse: collapse; }
                     .items-table th, .items-table td { padding: 5px; text-align: left; }
                     .totals { margin-top: 15px; }
-                    .totals div { display: flex; justify-content: space-between; }
                 </style>
             `);
             printWindow?.document.write('</head><body>');
@@ -81,7 +80,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                      await Share.share({
                         title: 'Order Receipt',
                         text: shareText,
-                        files: [file],
+                        files: [dataUrl],
                      });
                  } else {
                      // Fallback for browsers that don't support file sharing
