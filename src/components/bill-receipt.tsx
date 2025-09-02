@@ -9,8 +9,8 @@ import { Printer, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
+import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-
 
 interface BillReceiptProps {
     order: Order;
@@ -36,14 +36,13 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             printWindow?.document.write('<html><head><title>Print Bill</title>');
             printWindow?.document.write(`
                 <style>
-                    body { font-family: sans-serif; margin: 20px; color: black !important; }
+                    body { font-family: 'Inter', sans-serif; margin: 20px; color: black !important; }
                     .receipt { border: 1px solid #ccc; padding: 15px; width: 300px; margin: 0 auto; background-color: white; color: black; }
                     .receipt * { color: black !important; }
                     .header { text-align: center; }
                     .items-table { width: 100%; border-collapse: collapse; }
                     .items-table th, .items-table td { padding: 5px; text-align: left; }
                     .totals { margin-top: 15px; }
-                    .totals div { display: flex; justify-content: space-between; }
                 </style>
             `);
             printWindow?.document.write('</head><body>');
@@ -55,29 +54,80 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         }
     }
     
-    const handleShare = async () => {
-        const itemsText = order.items.map(item => `${item.name} (x${item.quantity})`).join(', ');
-        const billDetails = `Order #${order.id}\nItems: ${itemsText}\nTotal: Rs.${order.total.toFixed(2)}`;
-        const encodedText = encodeURIComponent(billDetails);
+     const handleShare = async () => {
+        if (!receiptRef.current) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not capture receipt to share.' });
+            return;
+        }
 
-        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+        const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
+
+        // Use a cloned node to avoid issues with original node styling and state
+        const nodeToCapture = receiptRef.current;
         
-        window.open(whatsappUrl, '_blank');
-        
-        toast({
-            title: "Sharing to WhatsApp",
-            description: "To share the full receipt image, please take a screenshot.",
-        });
+        try {
+            const dataUrl = await htmlToImage.toPng(nodeToCapture, { 
+                quality: 0.95,
+                backgroundColor: 'white',
+                skipFonts: true,
+                cacheBust: true
+             });
+
+            const platform = Capacitor.getPlatform();
+
+            if (platform === 'web') {
+                 const response = await fetch(dataUrl);
+                 const blob = await response.blob();
+                 const file = new File([blob], 'bill-receipt.png', { type: 'image/png' });
+
+                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                     await Share.share({
+                        title: 'Order Receipt',
+                        text: shareText,
+                        files: [dataUrl],
+                     });
+                 } else {
+                     // Fallback for browsers that don't support sharing files (like some desktop browsers)
+                     // This attempts to open WhatsApp, but may not be supported.
+                     window.open(`whatsapp://send?text=${encodeURIComponent(shareText)}`, '_blank');
+                 }
+            } else {
+                 await Share.share({
+                    title: 'Order Receipt',
+                    text: shareText,
+                    url: dataUrl,
+                });
+            }
+
+        } catch (error: any) {
+            // This is a common error on some mobile webviews, we can ignore it.
+            if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
+              return;
+            }
+            console.error('Share failed', error);
+            toast({
+                variant: 'destructive',
+                title: 'Sharing Failed',
+                description: 'Could not share the receipt image. Please try taking a screenshot.',
+            });
+             // Fallback to text-only if image generation or sharing fails
+            await Share.share({
+                title: 'Order Receipt',
+                text: shareText
+            }).catch(() => { /* ignore fallback error */});
+        }
     }
+
 
     return (
         <div className="space-y-4">
             <div id="receipt-container">
-                <div ref={receiptRef} className="text-sm p-4 bg-background text-black">
+                <div ref={receiptRef} className="text-sm p-4 bg-background text-black" style={{ color: 'black' }}>
                     <div className="text-center mb-4">
                         <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
                         <p className="text-xs text-gray-600">Receipt</p>
                     </div>
+
                     {settings?.qr_code_url && order.order_type === 'delivery' && (
                       <div className="flex flex-col items-center gap-2 my-4">
                         <p className="text-sm font-medium">Scan to Pay</p>
@@ -86,28 +136,30 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         </div>
                       </div>
                     )}
+                    
                     <div className="space-y-1">
                         <p><strong>Order ID:</strong> {order.id}</p>
                         <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>
-                        {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
                         <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
+                         {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
                     </div>
 
                     {order.order_type === 'delivery' && (
                         <>
-                            <Separator className="my-2" />
+                            <Separator className="my-2 bg-gray-400" />
                             <div className="space-y-1">
                                 <h4 className="font-semibold">Delivery To:</h4>
-                                <p>{order.phone_no}</p>
-                                <p>{[order.flat_no, order.building_no, order.address].filter(Boolean).join(', ')}</p>
+                                {order.phone_no && <p>{order.phone_no}</p>}
+                                {order.flat_no && <p>{order.flat_no}</p>}
+                                {[order.building_no, order.address].filter(Boolean).join(', ') && <p>{[order.building_no, order.address].filter(Boolean).join(', ')}</p>}
                             </div>
                         </>
                     )}
 
-                    <Separator className="my-2" />
+                    <Separator className="my-2 bg-gray-400" />
                     <div>
-                        {order.items.map(item => (
-                            <div key={item.id} className="flex justify-between">
+                        {order.items.map((item, index) => (
+                            <div key={`${item.id}-${index}`} className="flex justify-between">
                                 <div>
                                     <p>{item.name}</p>
                                     <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
@@ -116,7 +168,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             </div>
                         ))}
                     </div>
-                    <Separator className="my-2" />
+                    <Separator className="my-2 bg-gray-400" />
                     <div className="space-y-1">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
@@ -131,15 +183,15 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             <span>Rs.{order.total.toFixed(2)}</span>
                         </div>
                     </div>
-                     <Separator className="my-2" />
-                     <div className="text-center">
-                        {order.order_type === 'delivery' ? (
-                            <div className="space-y-1 text-xs">
-                                <p><strong>To be paid by Cash/UPI.</strong></p>
+                     <Separator className="my-2 bg-gray-400" />
+                     <div className="text-center mt-4">
+                        {order.payment_method ? (
+                             <p><strong>Paid via:</strong> {order.payment_method}</p>
+                        ) : (
+                           <div className="space-y-1 text-xs">
+                                <p className="font-bold">To be paid by Cash/UPI.</p>
                                 <p className="text-gray-600">Please share a screenshot of the payment on WhatsApp.</p>
                             </div>
-                        ) : (
-                            order.payment_method && <p><strong>Paid via:</strong> {order.payment_method}</p>
                         )}
                         <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
                     </div>

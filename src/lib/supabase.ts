@@ -310,20 +310,20 @@ export const signIn = async (identifier: string, password: string): Promise<User
         return null; // Password mismatch
     }
 
-    const { data: latestUser, error: latestUserError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-    
-    if(latestUserError || !latestUser) {
-        console.error('Could not re-fetch user after sign-in', latestUserError);
+    // Verify restaurant exists before returning user data
+    const restaurant = await getSettings(user.restaurant_id);
+    if (!restaurant) {
+        console.error(`Sign-in failed: User ${user.id} has an invalid restaurant_id: ${user.restaurant_id}`);
         return null;
     }
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = latestUser;
-    return userWithoutPassword as User;
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+        ...userWithoutPassword,
+        restaurant_name: restaurant.restaurant_name // Attach restaurant name
+    } as User;
 };
 
 
