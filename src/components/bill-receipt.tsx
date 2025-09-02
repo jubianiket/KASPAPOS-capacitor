@@ -62,13 +62,16 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
         const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
 
+        // Use a cloned node to avoid issues with original node styling and state
+        const nodeToCapture = receiptRef.current;
+        
         try {
-            const dataUrl = await htmlToImage.toPng(receiptRef.current, {
+            const dataUrl = await htmlToImage.toPng(nodeToCapture, { 
                 quality: 0.95,
                 backgroundColor: 'white',
                 skipFonts: true,
-                cacheBust: true,
-            });
+                cacheBust: true
+             });
 
             const platform = Capacitor.getPlatform();
 
@@ -84,6 +87,8 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         files: [dataUrl],
                      });
                  } else {
+                     // Fallback for browsers that don't support sharing files (like some desktop browsers)
+                     // This attempts to open WhatsApp, but may not be supported.
                      window.open(`whatsapp://send?text=${encodeURIComponent(shareText)}`, '_blank');
                  }
             } else {
@@ -95,6 +100,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             }
 
         } catch (error: any) {
+            // This is a common error on some mobile webviews, we can ignore it.
             if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
               return;
             }
@@ -102,9 +108,9 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             toast({
                 variant: 'destructive',
                 title: 'Sharing Failed',
-                description: 'Could not share the receipt. Please try taking a screenshot.',
+                description: 'Could not share the receipt image. Please try taking a screenshot.',
             });
-             // Fallback for when image generation fails
+             // Fallback to text-only if image generation or sharing fails
             await Share.share({
                 title: 'Order Receipt',
                 text: shareText
