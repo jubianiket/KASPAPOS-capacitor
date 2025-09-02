@@ -89,25 +89,27 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             });
 
             if (Capacitor.isNativePlatform()) {
-                toast({
-                    title: 'Feature Not Available',
-                    description: 'Image sharing is only available on the web version.'
-                });
-                return;
-            }
-
-            const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
-            if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
+                // Native sharing for iOS/Android
+                await Share.share({
                     title: `Bill for Order #${order.id}`,
                     text: `Here is your bill.`,
-                    files: [file],
+                    url: dataUrl, // Use the base64 data URL directly
                 });
             } else {
-                toast({
-                    title: 'Sharing Not Supported',
-                    description: 'Your browser does not support sharing files. Please try a different browser.',
-                });
+                // Web Share API for browsers
+                const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
+                if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                        title: `Bill for Order #${order.id}`,
+                        text: `Here is your bill.`,
+                        files: [file],
+                    });
+                } else {
+                    toast({
+                        title: 'Sharing Not Supported',
+                        description: 'Your browser does not support sharing files. Please try a different browser.',
+                    });
+                }
             }
 
         } catch (error) {
