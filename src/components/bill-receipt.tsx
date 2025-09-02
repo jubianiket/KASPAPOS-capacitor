@@ -12,6 +12,21 @@ import * as htmlToImage from 'html-to-image';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
+async function getFontEmbedCSS() {
+    try {
+        const fontUrl = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
+        const response = await fetch(fontUrl);
+        if (!response.ok) {
+            console.warn('Failed to fetch font CSS, will proceed without it.');
+            return '';
+        }
+        const cssText = await response.text();
+        return cssText;
+    } catch (error) {
+        console.error('Error fetching font CSS:', error);
+        return '';
+    }
+}
 
 interface BillReceiptProps {
     order: Order;
@@ -24,7 +39,6 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
     const formatDateTime = (dateString: string) => {
         if (typeof window === 'undefined') {
-            // Fallback for server-side rendering
             return new Date(dateString).toISOString(); 
         }
         const date = new Date(dateString);
@@ -38,7 +52,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             printWindow?.document.write('<html><head><title>Print Bill</title>');
             printWindow?.document.write(`
                 <style>
-                    body { font-family: sans-serif; margin: 20px; color: black !important; }
+                    body { font-family: 'Inter', sans-serif; margin: 20px; color: black !important; }
                     .receipt { border: 1px solid #ccc; padding: 15px; width: 300px; margin: 0 auto; background-color: white; color: black; }
                     .receipt * { color: black !important; }
                     .header { text-align: center; }
@@ -63,10 +77,12 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         }
 
         try {
-            const dataUrl = await htmlToImage.toPng(receiptRef.current, { 
-                cacheBust: true,
+            const fontEmbedCss = await getFontEmbedCSS();
+            const dataUrl = await htmlToImage.toPng(receiptRef.current, {
+                quality: 0.95,
                 backgroundColor: 'white',
-             });
+                fontEmbedCSS: fontEmbedCss,
+            });
 
             const platform = Capacitor.getPlatform();
             const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
@@ -83,15 +99,9 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         files: [dataUrl],
                      });
                  } else {
-                     // Fallback for browsers that don't support file sharing
                      window.open(`whatsapp://send?text=${encodeURIComponent(shareText)}`, '_blank');
-                     toast({
-                         title: 'Use mobile app to share image',
-                         description: 'Your browser doesn\'t support sharing images directly. You can share the text details.',
-                     });
                  }
             } else {
-                 // Native platform (iOS/Android)
                  await Share.share({
                     title: 'Order Receipt',
                     text: shareText,
@@ -101,7 +111,6 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
 
         } catch (error: any) {
             if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
-              // Ignore user cancellation
               return;
             }
             console.error('Share failed', error);
@@ -123,7 +132,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         <p className="text-xs text-gray-600">Receipt</p>
                     </div>
 
-                    {settings?.qr_code_url && (
+                    {settings?.qr_code_url && order.order_type === 'delivery' && (
                       <div className="flex flex-col items-center gap-2 my-4">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">
