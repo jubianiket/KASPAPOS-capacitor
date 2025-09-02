@@ -9,7 +9,7 @@ import { Printer, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
-import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
 
 
 interface BillReceiptProps {
@@ -55,20 +55,37 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         }
     }
     
-    const handleShare = async () => {
-        const itemsText = order.items.map(item => `${item.name} (x${item.quantity})`).join(', ');
-        const billDetails = `Order #${order.id}\nItems: ${itemsText}\nTotal: Rs.${order.total.toFixed(2)}`;
-        const encodedText = encodeURIComponent(billDetails);
+     const handleShare = async () => {
+        if (!receiptRef.current) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not capture receipt to share.' });
+            return;
+        }
 
-        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-        
-        window.open(whatsappUrl, '_blank');
-        
-        toast({
-            title: "Sharing to WhatsApp",
-            description: "To share the full receipt image, please take a screenshot.",
-        });
+        try {
+            const dataUrl = await htmlToImage.toPng(receiptRef.current, { 
+                cacheBust: true,
+                backgroundColor: 'white',
+             });
+
+            await Share.share({
+                title: 'Order Receipt',
+                text: `Here is the receipt for order #${order.id}`,
+                url: dataUrl,
+            });
+        } catch (error: any) {
+            // Check if the error is a cancellation error, and ignore it.
+            if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
+              return;
+            }
+            console.error('Share failed', error);
+            toast({
+                variant: 'destructive',
+                title: 'Sharing Failed',
+                description: 'Could not share the receipt image. Please try taking a screenshot.',
+            });
+        }
     }
+
 
     return (
         <div className="space-y-4">
