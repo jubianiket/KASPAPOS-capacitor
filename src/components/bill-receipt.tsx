@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
 import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 
 interface BillReceiptProps {
@@ -67,13 +68,38 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 backgroundColor: 'white',
              });
 
-            await Share.share({
-                title: 'Order Receipt',
-                text: `Here is the receipt for order #${order.id}`,
-                url: dataUrl,
-            });
+            const platform = Capacitor.getPlatform();
+            const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
+
+            if (platform === 'web') {
+                 const response = await fetch(dataUrl);
+                 const blob = await response.blob();
+                 const file = new File([blob], 'bill-receipt.png', { type: 'image/png' });
+
+                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                     await Share.share({
+                        title: 'Order Receipt',
+                        text: shareText,
+                        files: [file],
+                     });
+                 } else {
+                     // Fallback for browsers that don't support file sharing
+                     window.open(`whatsapp://send?text=${encodeURIComponent(shareText)}`, '_blank');
+                     toast({
+                         title: 'Use mobile app to share image',
+                         description: 'Your browser doesn\'t support sharing images directly. You can share the text details.',
+                     });
+                 }
+            } else {
+                 // Native platform (iOS/Android)
+                 await Share.share({
+                    title: 'Order Receipt',
+                    text: shareText,
+                    url: dataUrl,
+                });
+            }
+
         } catch (error: any) {
-            // Check if the error is a cancellation error, and ignore it.
             if (error.message && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
               return;
             }
@@ -81,7 +107,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             toast({
                 variant: 'destructive',
                 title: 'Sharing Failed',
-                description: 'Could not share the receipt image. Please try taking a screenshot.',
+                description: 'Could not share the receipt. Please try taking a screenshot.',
             });
         }
     }
