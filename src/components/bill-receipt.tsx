@@ -59,8 +59,13 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not capture receipt to share.' });
             return;
         }
-
-        const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
+        
+        const shareText = `*${settings?.restaurant_name || 'KASPA POS'}*\n` +
+            `Order #${order.id}\n` +
+            `Date: ${formatDateTime(order.created_at)}\n` +
+            `${order.order_type === 'dine-in' ? `Table: ${order.table_number}` : 'Delivery Order'}\n\n` +
+            `Total Amount: Rs.${order.total.toFixed(2)}\n\n` +
+            `Please share a screenshot of the payment to confirm your order.\n`;
 
         // Use a cloned node to avoid issues with original node styling and state
         const nodeToCapture = receiptRef.current;
@@ -87,11 +92,21 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                         files: [dataUrl],
                      });
                  } else {
-                     // Fallback for browsers that don't support sharing files (like some desktop browsers)
-                     // This attempts to open WhatsApp, but may not be supported.
-                     window.open(`whatsapp://send?text=${encodeURIComponent(shareText)}`, '_blank');
+                     // Try to open WhatsApp with image and text
+                     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
+                     window.location.href = whatsappUrl;
+                     
+                     // If WhatsApp doesn't open after 1 second, fallback to regular share
+                     setTimeout(async () => {
+                         await Share.share({
+                             title: 'Order Receipt',
+                             text: shareText,
+                             files: [file],
+                         });
+                     }, 1000);
                  }
             } else {
+                 // For native apps, use the Share API directly
                  await Share.share({
                     title: 'Order Receipt',
                     text: shareText,
