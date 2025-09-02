@@ -61,6 +61,7 @@ export interface User {
     email: string;
     restaurant_id: number;
     password?: string; // Make password optional as it should not be client-facing
+    restaurant_name?: string; // Add restaurant name
 }
 
 export interface Restaurant {
