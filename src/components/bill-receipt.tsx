@@ -9,7 +9,6 @@ import { Printer, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
-import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
 
@@ -55,72 +54,20 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             printWindow?.print();
         }
     }
-
-    const dataURLtoFile = (dataurl: string, filename: string) => {
-        const arr = dataurl.split(',');
-        if (arr.length < 2) return undefined;
-        const mimeMatch = arr[0].match(/:(.*?);/);
-        if (!mimeMatch) return undefined;
-        const mime = mimeMatch[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new File([u8arr], filename, { type: mime });
-    }
     
     const handleShare = async () => {
-        if (!receiptRef.current) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not generate bill image.'
-            });
-            return;
-        }
+        const itemsText = order.items.map(item => `${item.name} (x${item.quantity})`).join(', ');
+        const billDetails = `Order #${order.id}\nItems: ${itemsText}\nTotal: Rs.${order.total.toFixed(2)}`;
+        const encodedText = encodeURIComponent(billDetails);
 
-        try {
-            const dataUrl = await htmlToImage.toPng(receiptRef.current, { 
-                cacheBust: true,
-                quality: 0.95,
-                backgroundColor: 'white'
-            });
-
-            if (Capacitor.isNativePlatform()) {
-                // Native sharing for iOS/Android
-                await Share.share({
-                    title: `Bill for Order #${order.id}`,
-                    text: `Here is your bill.`,
-                    url: dataUrl, // Use the base64 data URL directly
-                });
-            } else {
-                // Web Share API for browsers
-                const file = dataURLtoFile(dataUrl, `bill-order-${order.id}.png`);
-                if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                        title: `Bill for Order #${order.id}`,
-                        text: `Here is your bill.`,
-                        files: [file],
-                    });
-                } else {
-                    toast({
-                        title: 'Sharing Not Supported',
-                        description: 'Your browser does not support sharing files. Please try a different browser.',
-                    });
-                }
-            }
-
-        } catch (error) {
-            console.error('Error sharing bill image:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Could not share the bill image.';
-            toast({
-                variant: 'destructive',
-                title: 'Sharing Failed',
-                description: errorMessage,
-            });
-        }
+        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+        
+        window.open(whatsappUrl, '_blank');
+        
+        toast({
+            title: "Sharing to WhatsApp",
+            description: "To share the full receipt image, please take a screenshot.",
+        });
     }
 
     return (
