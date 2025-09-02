@@ -12,22 +12,6 @@ import * as htmlToImage from 'html-to-image';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
-async function getFontEmbedCSS() {
-    try {
-        const fontUrl = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
-        const response = await fetch(fontUrl);
-        if (!response.ok) {
-            console.warn('Failed to fetch font CSS, will proceed without it.');
-            return '';
-        }
-        const cssText = await response.text();
-        return cssText;
-    } catch (error) {
-        console.error('Error fetching font CSS:', error);
-        return '';
-    }
-}
-
 interface BillReceiptProps {
     order: Order;
     settings: Restaurant | null;
@@ -76,16 +60,17 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             return;
         }
 
+        const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
+
         try {
-            const fontEmbedCss = await getFontEmbedCSS();
             const dataUrl = await htmlToImage.toPng(receiptRef.current, {
                 quality: 0.95,
                 backgroundColor: 'white',
-                fontEmbedCSS: fontEmbedCss,
+                skipFonts: true,
+                cacheBust: true,
             });
 
             const platform = Capacitor.getPlatform();
-            const shareText = `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`;
 
             if (platform === 'web') {
                  const response = await fetch(dataUrl);
@@ -119,6 +104,11 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 title: 'Sharing Failed',
                 description: 'Could not share the receipt. Please try taking a screenshot.',
             });
+             // Fallback for when image generation fails
+            await Share.share({
+                title: 'Order Receipt',
+                text: shareText
+            }).catch(() => { /* ignore fallback error */});
         }
     }
 
