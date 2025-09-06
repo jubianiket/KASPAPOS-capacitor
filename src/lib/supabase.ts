@@ -251,7 +251,7 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication & Restaurant Management ---
 
-export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email'>): Promise<User | null> => {
+export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'auth_user_id'>): Promise<User | null> => {
     // Step 1: Create the Supabase auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
     if(authError || !authData.user) {
@@ -268,19 +268,18 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Attempt to clean up the auth user if profile creation fails
-        // This is not transactional, so it's a best-effort cleanup.
+        // Best-effort cleanup
         // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
 
-    // Step 3: Create the user profile in public.users, linking it to the new restaurant
+    // Step 3: Create the user profile in public.users, linking to auth and restaurant
     const userProfileToCreate = {
         ...userData,
         email, 
         role: 'admin',
         restaurant_id: restaurantData.id,
-        auth_user_id: authData.user.id, // <-- This is the crucial link
+        auth_user_id: authData.user.id, // This is the crucial link to the auth user
     };
     
     const { data: newUser, error: userError } = await supabase
@@ -291,7 +290,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
-        // Attempt to clean up created restaurant and auth user on failure
+        // Best-effort cleanup
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
@@ -327,7 +326,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
         return null;
     }
     
-    // 3. Fetch the full user profile from your 'users' table using the now-confirmed email.
+    // 3. Fetch the full user profile from your 'users' table using the auth_user_id.
     const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
