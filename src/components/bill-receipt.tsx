@@ -11,6 +11,7 @@ import Image from "next/image";
 import * as htmlToImage from 'html-to-image';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface BillReceiptProps {
     order: Order;
@@ -113,31 +114,118 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 }
             } else {
                 // For native apps (Android/iOS)
-                await Share.share({
-                    title: 'Order Receipt',
-                    files: [dataUrl]
-                });
+                try {
+                    // Convert data URL to base64
+                    const base64Data = dataUrl.split(',')[1];
+                    
+                    // Save the image with a unique timestamp
+                    const timestamp = new Date().getTime();
+                    const fileName = `receipt_${order.id}_${timestamp}.png`;
+                    
+                    // First try to write to cache directory
+                    const savedFile = await Filesystem.writeFile({
+                        path: fileName,
+                        data: base64Data,
+                        directory: Directory.Cache,
+                        recursive: true
+                    });
+
+                    // Log the file details for debugging
+                    console.log('Saved file:', {
+                        path: savedFile.uri,
+                        directory: Directory.Cache,
+                        exists: await Filesystem.stat({
+                            path: fileName,
+                            directory: Directory.Cache
+                        }).catch(() => null)
+                    });
+
+                    // Share the file using both url and files array for maximum compatibility
+                    await Share.share({
+                        title: 'Order Receipt',
+                        text: 'Order Receipt',
+                        url: savedFile.uri,
+                        files: [savedFile.uri],
+                        dialogTitle: 'Share Order Receipt'
+                    });
+
+                    // Wait a bit before cleaning up to ensure sharing is complete
+                    setTimeout(async () => {
+                        try {
+                            await Filesystem.deleteFile({
+                                path: fileName,
+                                directory: Directory.Cache
+                            });
+                        } catch (cleanupError) {
+                            console.log('Cleanup error (safe to ignore):', cleanupError);
+                        }
+                    }, 3000);
+                } catch (e) {
+                    console.error('Native sharing failed:', e);
+                    
+                    // Try fallback sharing with just the base64 data
+                    try {
+                        await Share.share({
+                            title: 'Order Receipt',
+                            text: 'Order Receipt',
+                            url: dataUrl,
+                            dialogTitle: 'Share Order Receipt'
+                        });
+                    } catch (fallbackError) {
+                        console.error('Fallback sharing failed:', fallbackError);
+                        throw e; // Re-throw the original error if fallback also fails
+                    }
+                }
             }
         } catch (error) {
-            console.error('Share failed', error);
+            console.error('Share failed:', error);
+            
+            // Don't show error for user cancellation
             if (error instanceof Error && error.message && 
-               (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
+               (error.message.includes('Share canceled') || error.message.includes('AbortError') || 
+                error.message.includes('User cancelled'))) {
                 return;
+            }
+            
+            // Show appropriate error message based on the error type and platform
+            const platform = Capacitor.getPlatform();
+            let errorMessage = '';
+            
+            if (error instanceof Error) {
+                if (error.message.includes('permission')) {
+                    errorMessage = 'Please grant storage permission to share the receipt.';
+                } else if (error.message.includes('file') || error.message.includes('File')) {
+                    errorMessage = 'Error creating the receipt image. Please try again.';
+                } else {
+                    errorMessage = platform === 'web' 
+                        ? 'Could not share the receipt. Please try taking a screenshot.'
+                        : 'Could not share the receipt. Please check your storage permissions and try again.';
+                }
+                
+                // Log detailed error for debugging
+                console.log('Sharing error details:', {
+                    platform,
+                    errorType: error.name,
+                    errorMessage: error.message,
+                    errorStack: error.stack
+                });
+            } else {
+                errorMessage = 'An unexpected error occurred while sharing.';
             }
             
             toast({
                 variant: 'destructive',
                 title: 'Sharing Failed',
-                description: 'Could not share the receipt image. Please try taking a screenshot.',
+                description: errorMessage
             });
         }
     }
 
 
     return (
-        <div className="space-y-4">
-            <div id="receipt-container">
-                <div ref={receiptRef} className="text-sm p-4 bg-background text-black" style={{ color: 'black' }}>
+        <div className="space-y-4 max-h-[calc(100vh-200px)] flex flex-col">
+            <div id="receipt-container" className="flex-1 overflow-y-auto">
+                <div ref={receiptRef} className="text-sm p-4 bg-background text-black max-w-md mx-auto" style={{ color: 'black' }}>
                     <div className="text-center mb-4">
                         <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
                         <p className="text-xs text-gray-600">Receipt</p>
@@ -147,7 +235,15 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                       <div className="flex flex-col items-center gap-2 my-4">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">
-                            <Image src={settings.qr_code_url} alt="Payment QR Code" width={150} height={150} data-ai-hint="QR code" />
+                            <div className="relative w-[120px] h-[120px]">
+                                <Image 
+                                    src={settings.qr_code_url} 
+                                    alt="Payment QR Code" 
+                                    fill
+                                    style={{ objectFit: 'contain' }}
+                                    data-ai-hint="QR code" 
+                                />
+                            </div>
                         </div>
                       </div>
                     )}
@@ -164,9 +260,13 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             <Separator className="my-2 bg-gray-400" />
                             <div className="space-y-1">
                                 <h4 className="font-semibold">Delivery To:</h4>
-                                {order.phone_no && <p>{order.phone_no}</p>}
-                                {order.flat_no && <p>{order.flat_no}</p>}
-                                {[order.building_no, order.address].filter(Boolean).join(', ') && <p>{[order.building_no, order.address].filter(Boolean).join(', ')}</p>}
+                                {order.phone_no && <p className="break-words">{order.phone_no}</p>}
+                                {order.flat_no && <p className="break-words">{order.flat_no}</p>}
+                                {[order.building_no, order.address].filter(Boolean).join(', ') && (
+                                    <p className="break-words text-sm leading-tight">
+                                        {[order.building_no, order.address].filter(Boolean).join(', ')}
+                                    </p>
+                                )}
                             </div>
                         </>
                     )}
@@ -174,12 +274,12 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                     <Separator className="my-2 bg-gray-400" />
                     <div>
                         {order.items.map((item, index) => (
-                            <div key={`${item.id}-${index}`} className="flex justify-between">
-                                <div>
-                                    <p>{item.name}</p>
+                            <div key={`${item.id}-${index}`} className="flex justify-between gap-2 py-1">
+                                <div className="flex-1 min-w-0">
+                                    <p className="break-words">{item.name}</p>
                                     <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
                                 </div>
-                                <p>Rs.{(item.quantity * item.rate).toFixed(2)}</p>
+                                <p className="whitespace-nowrap">Rs.{(item.quantity * item.rate).toFixed(2)}</p>
                             </div>
                         ))}
                     </div>
@@ -212,7 +312,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                     </div>
                 </div>
             </div>
-             <div className="flex justify-end gap-2 mt-4">
+             <div className="sticky bottom-0 bg-background pt-2 border-t flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={handleShare}>
                     <Share2 className="mr-2 h-4 w-4" /> Share
                 </Button>
