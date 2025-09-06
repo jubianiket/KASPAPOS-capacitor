@@ -274,17 +274,20 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
+        // Best effort to clean up the auth user if profile creation fails
+        // This is not transactional, so it's not guaranteed.
+        // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
 
-    // Step 2: Create the user profile, letting the DB auto-generate the ID
+    // Step 2: Create the user profile in the public.users table
     const userProfileToCreate = {
         ...userData,
-        email, // email is unique and can be used as a stable identifier
+        email, 
         role: 'admin',
         restaurant_id: restaurantData.id,
     };
-
+    
     const { data: newUser, error: userError } = await supabase
         .from('users')
         .insert(userProfileToCreate)
@@ -293,7 +296,10 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
+        // Clean up created restaurant if user profile creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
+        // Also try to clean up the auth user
+        // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
     
@@ -302,9 +308,23 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
+    // 1. Find the user by email or username to get their actual email
+    const { data: userRecord, error: findUserError } = await supabase
+        .from('users')
+        .select('email')
+        .or(`email.eq.${identifier},username.eq.${identifier}`)
+        .single();
+
+    if (findUserError || !userRecord) {
+        console.error("Error finding user by identifier or user not found:", findUserError);
+        return null;
+    }
     
+    const userEmail = userRecord.email;
+
+    // 2. Sign in using the retrieved email
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: identifier,
+        email: userEmail,
         password,
     });
 
@@ -313,7 +333,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
         return null;
     }
     
-    // Fetch the user profile from your 'users' table using the email.
+    // 3. Fetch the full user profile from your 'users' table using the now-confirmed email.
     const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
