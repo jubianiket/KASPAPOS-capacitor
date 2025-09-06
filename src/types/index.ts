@@ -53,7 +53,7 @@ export interface KitchenOrder {
 }
 
 export interface User {
-    id: string; // Changed to string to match Supabase Auth UUID
+    id: number; // Changed back to number to match public.users table schema
     username: string;
     role: string;
     name: string;
@@ -80,5 +80,3 @@ export interface Restaurant {
     table_count?: number;
     qr_code_url?: string | null;
 }
-
-    

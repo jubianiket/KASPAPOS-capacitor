@@ -265,6 +265,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         return null;
     }
 
+    // Step 1: Create the restaurant and get its ID
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -273,28 +274,29 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
+        // Clean up the created auth user if restaurant creation fails
+        // await supabase.auth.api.deleteUser(authData.user.id); // This requires admin privileges, skip on client-side
         return null;
     }
 
-    const userToCreate = {
+    // Step 2: Create the user profile, letting the DB auto-generate the ID
+    const userProfileToCreate = {
         ...userData,
-        id: authData.user.id, // Use the ID from Supabase Auth
-        email,
+        email, // email is unique and can be used as a stable identifier
         role: 'admin',
         restaurant_id: restaurantData.id,
     };
 
     const { data: newUser, error: userError } = await supabase
         .from('users')
-        .insert(userToCreate)
+        .insert(userProfileToCreate)
         .select()
         .single();
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
+        // Clean up created restaurant if user profile creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
-        // Consider deleting the auth user as well for cleanup
-        // await supabase.auth.api.deleteUser(authData.user.id);
         return null;
     }
     
@@ -305,30 +307,33 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
     
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: identifier, // Assuming identifier is always email for simplicity now
+        email: identifier,
         password,
     });
 
     if (authError || !authData.user) {
         console.error("Error signing in with Supabase auth:", authError);
-        // Fallback or handling for non-email identifiers might be needed here
         return null;
     }
     
+    // Fetch the user profile from your 'users' table using the email.
     const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authData.user.id)
+        .eq('email', authData.user.email)
         .single();
     
-    if (profileError) {
+    if (profileError || !userProfile) {
         console.error("Error fetching user profile:", profileError);
+        // If the profile doesn't exist, sign the user out to prevent a broken state
+        await supabase.auth.signOut();
         return null;
     }
 
     const restaurant = await getSettings(userProfile.restaurant_id);
     if (!restaurant) {
         console.error(`Sign-in failed: User ${userProfile.id} has an invalid restaurant_id: ${userProfile.restaurant_id}`);
+        await supabase.auth.signOut();
         return null;
     }
     
@@ -376,4 +381,3 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
-
