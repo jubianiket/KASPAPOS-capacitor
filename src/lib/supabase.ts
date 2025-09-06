@@ -6,7 +6,12 @@ import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+    }
+});
+
 
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
@@ -285,22 +290,27 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
     return newUser as User;
 };
 
+
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
-    // 1. Find user by email, username, or phone number
-    const { data: user, error } = await supabase
+    // 1. Check if identifier is numeric or text
+    const isNumeric = !isNaN(parseFloat(identifier)) && isFinite(Number(identifier));
+
+    let query = supabase
         .from('users')
         .select('*')
-        .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
-        .single();
+        .eq('password', password);
 
-    if (error || !user) {
-        console.error("User not found:", error ? error.message : 'No user matched identifier');
-        return null;
+    // 2. Build the query based on the identifier type
+    if (isNumeric) {
+        query = query.or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`);
+    } else {
+        query = query.or(`email.eq.${identifier},username.eq.${identifier}`);
     }
 
-    // 2. Check if password matches
-    if (user.password !== password) {
-        console.error("Invalid password for user:", user.email);
+    const { data: user, error } = await query.single();
+    
+    if (error || !user) {
+        console.error("User not found:", error ? error.message : 'No user matched identifier');
         return null;
     }
 
@@ -318,6 +328,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
         restaurant_name: restaurant.restaurant_name
     } as User;
 };
+
 
 
 // --- Restaurant Settings ---
