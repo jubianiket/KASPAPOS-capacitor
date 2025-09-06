@@ -53,7 +53,8 @@ export interface KitchenOrder {
 }
 
 export interface User {
-    id: number; // Changed back to number to match public.users table schema
+    id: number; 
+    auth_user_id: string; // Add auth_user_id to link to Supabase auth
     username: string;
     role: string;
     name: string;

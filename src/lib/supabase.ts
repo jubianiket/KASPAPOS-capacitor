@@ -254,15 +254,11 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email'>): Promise<User | null> => {
     // Step 1: Create the Supabase auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-    if(authError) {
+    if(authError || !authData.user) {
         console.error("Error during Supabase auth signup:", authError);
         return null;
     }
-    if (!authData.user) {
-        console.error("No user returned from Supabase auth signup");
-        return null;
-    }
-
+    
     // Step 2: Create a new restaurant for this user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
@@ -283,7 +279,8 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         ...userData,
         email, 
         role: 'admin',
-        restaurant_id: restaurantData.id, // Correctly assign the new restaurant's ID
+        restaurant_id: restaurantData.id,
+        auth_user_id: authData.user.id, // <-- This is the crucial link
     };
     
     const { data: newUser, error: userError } = await supabase
@@ -334,7 +331,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
     const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('email', authData.user.email)
+        .eq('auth_user_id', authData.user.id)
         .single();
     
     if (profileError || !userProfile) {
