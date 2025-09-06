@@ -301,32 +301,41 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
-    // 1. Find the user by email or username to get their actual email
-    const { data: userRecord, error: findUserError } = await supabase
-        .from('users')
-        .select('email')
-        .or(`email.eq.${identifier},username.eq.${identifier}`)
-        .single();
-
-    if (findUserError || !userRecord) {
-        console.error("Error finding user by identifier or user not found:", findUserError);
-        return null;
-    }
-    
-    const userEmail = userRecord.email;
-
-    // 2. Sign in using the retrieved email
+    // 1. Sign in using the identifier as email and the password.
+    // Supabase signInWithPassword can handle email directly.
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
+        email: identifier,
         password,
     });
 
     if (authError || !authData.user) {
-        console.error("Error signing in with Supabase auth:", authError);
-        return null;
+        // If it fails, it might be a username. Let's try finding the user.
+        const { data: userRecord, error: findUserError } = await supabase
+            .from('users')
+            .select('email')
+            .eq('username', identifier)
+            .single();
+
+        if (findUserError || !userRecord) {
+            console.error("Could not find user by email or username:", authError || findUserError);
+            return null;
+        }
+
+        // Try signing in again with the found email
+        const { data: retryAuthData, error: retryAuthError } = await supabase.auth.signInWithPassword({
+            email: userRecord.email,
+            password,
+        });
+
+        if (retryAuthError || !retryAuthData.user) {
+            console.error("Invalid password for user:", retryAuthError);
+            return null;
+        }
+        // Use the successful retry data
+        Object.assign(authData, retryAuthData);
     }
     
-    // 3. Fetch the full user profile from your 'users' table using the auth_user_id.
+    // 2. Fetch the full user profile from your 'users' table using the auth_user_id.
     const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
