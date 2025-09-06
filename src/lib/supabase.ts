@@ -252,20 +252,18 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email'>): Promise<User | null> => {
-    
+    // Step 1: Create the Supabase auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-
     if(authError) {
         console.error("Error during Supabase auth signup:", authError);
         return null;
     }
-
     if (!authData.user) {
         console.error("No user returned from Supabase auth signup");
         return null;
     }
 
-    // Step 1: Create the restaurant and get its ID
+    // Step 2: Create a new restaurant for this user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -274,18 +272,18 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Best effort to clean up the auth user if profile creation fails
-        // This is not transactional, so it's not guaranteed.
+        // Attempt to clean up the auth user if profile creation fails
+        // This is not transactional, so it's a best-effort cleanup.
         // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
 
-    // Step 2: Create the user profile in the public.users table
+    // Step 3: Create the user profile in public.users, linking it to the new restaurant
     const userProfileToCreate = {
         ...userData,
         email, 
         role: 'admin',
-        restaurant_id: restaurantData.id,
+        restaurant_id: restaurantData.id, // Correctly assign the new restaurant's ID
     };
     
     const { data: newUser, error: userError } = await supabase
@@ -296,9 +294,8 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
-        // Clean up created restaurant if user profile creation fails
+        // Attempt to clean up created restaurant and auth user on failure
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
-        // Also try to clean up the auth user
         // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
