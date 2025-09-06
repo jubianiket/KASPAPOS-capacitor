@@ -34,14 +34,29 @@ export default function PortionSelectionDialog({
 
   useEffect(() => {
     // Set default selection when dialog opens
+    console.log('[PortionSelectionDialog] Dialog open state changed:', { 
+      isOpen, 
+      portionsAvailable: portions.length,
+      portions: portions.map(p => ({ id: p.id, portion: p.portion, rate: p.rate }))
+    });
     if (isOpen && portions.length > 0) {
-      setSelectedPortion(portions[0].portion || 'Regular');
+      const defaultPortion = portions[0].portion || 'Regular';
+      console.log('[PortionSelectionDialog] Setting default portion:', defaultPortion);
+      setSelectedPortion(defaultPortion);
     }
   }, [isOpen, portions]);
 
   const handleConfirm = () => {
+    console.log('[PortionSelectionDialog] Confirming portion selection:', {
+      itemName,
+      selectedPortion,
+      availablePortions: portions.map(p => p.portion)
+    });
     if (selectedPortion) {
+      console.log('[PortionSelectionDialog] Calling onConfirm with portion:', selectedPortion);
       onConfirm(selectedPortion);
+    } else {
+      console.warn('[PortionSelectionDialog] No portion selected');
     }
   };
 
@@ -60,6 +75,7 @@ export default function PortionSelectionDialog({
                 variant="outline"
                 value={selectedPortion}
                 onValueChange={(value) => {
+                    console.log('[PortionSelectionDialog] Portion selection changed:', { value });
                     if (value) setSelectedPortion(value);
                 }}
                 className="flex-wrap justify-center"

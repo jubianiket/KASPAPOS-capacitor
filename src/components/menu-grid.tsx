@@ -75,10 +75,22 @@ export default function MenuGrid({ menuItems, isLoading, onAddToOrder, selectedC
   };
 
   const handleSelectItemForPortion = (item: GroupedMenuItem) => {
-    if (item.portions.length === 1 && item.portions[0].portion === 'Regular') {
-        // If there's only one 'Regular' portion, add it directly
+    console.log('Handling item selection:', {
+        itemName: item.name,
+        portionsCount: item.portions.length,
+        portions: item.portions.map(p => p.portion)
+    });
+
+    if (item.portions.length === 1 && (!item.portions[0].portion || item.portions[0].portion === 'Regular')) {
+        // If there's only one portion and it's either undefined or 'Regular', add it directly
+        console.log('Adding item directly:', {
+          itemName: item.name,
+          portion: item.portions[0],
+          portionName: item.portions[0].portion || 'Regular'
+        });
         onAddToOrder(item.portions[0], item.portions[0].portion || 'Regular');
     } else {
+        console.log('Opening portion selection dialog');
         setSelectedItem(item);
     }
   }

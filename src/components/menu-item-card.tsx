@@ -37,16 +37,14 @@ export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) 
     toast({ title: "Info", description: "Price editing is available on the Menu Management page."});
   }
 
-  const handleCardClick = (e: React.MouseEvent) => {
-      e.preventDefault();
+  const handleAddClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      console.log('Adding item to order:', item.name);
       onAddToOrder(item);
   }
 
   return (
-    <Card 
-        className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
-        onClick={handleCardClick}
-    >
+    <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg">
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
       </CardContent>
@@ -54,7 +52,12 @@ export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) 
         <div className="flex items-center gap-2">
             <p className="text-lg font-bold text-primary">Rs.{Number(item.baseRate).toFixed(2)}</p>
         </div>
-        <Button size="icon" variant="outline" aria-label={`Add ${item.name} to order`}>
+        <Button 
+            size="icon" 
+            variant="outline" 
+            aria-label={`Add ${item.name} to order`}
+            onClick={handleAddClick}
+        >
           <Plus className="h-5 w-5" />
         </Button>
       </CardFooter>

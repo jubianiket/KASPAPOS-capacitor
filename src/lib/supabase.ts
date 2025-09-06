@@ -58,17 +58,30 @@ const toSupabase = (order: Order) => {
 
 
 export const getMenuItems = async (restaurantId: number): Promise<MenuItem[]> => {
-    const { data, error } = await supabase
-        .from('menu_items')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('name');
-        
-    if (error) {
-        console.error("Error fetching menu items:", error);
-        return [];
+    console.log('[Supabase] Attempting to fetch menu items for restaurant:', restaurantId);
+    console.log('[Supabase] Config:', { 
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    });
+
+    try {
+        const { data, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('restaurant_id', restaurantId)
+            .order('name');
+            
+        if (error) {
+            console.error("[Supabase] Error fetching menu items:", error);
+            throw error;
+        }
+
+        console.log('[Supabase] Successfully fetched menu items:', { count: data?.length });
+        return (data || []).map(item => ({ ...item, rate: Number(item.rate), restaurant_id: restaurantId })) as MenuItem[];
+    } catch (error) {
+        console.error("[Supabase] Exception in getMenuItems:", error);
+        throw error; // Re-throw to be handled by the caller
     }
-    return (data || []).map(item => ({ ...item, rate: Number(item.rate), restaurant_id: restaurantId })) as MenuItem[];
 }
 
 export const addMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem | null> => {
@@ -143,7 +156,15 @@ export const getCompletedOrders = async (restaurantId: number): Promise<Order[]>
 }
 
 export const saveOrder = async (order: Order): Promise<Order | null> => {
+    console.log('Attempting to save order:', {
+        id: order.id,
+        status: order.status,
+        items: order.items.length,
+        type: order.order_type
+    });
+
     if (order.status === 'pending') {
+        console.log('Order is pending, storing in local state only');
         return order;
     }
 

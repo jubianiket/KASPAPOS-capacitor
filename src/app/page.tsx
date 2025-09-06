@@ -121,24 +121,37 @@ export default function Home() {
   }
   
   const updateAndSaveOrder = async (order: Order) => {
+    console.log('Updating/saving order:', { 
+        orderId: order.id,
+        items: order.items,
+        status: order.status,
+        isNew: !order.id || order.id < 0 
+    });
+    
     const isNew = !order.id || order.id < 0;
     const oldOrderState = activeOrder ? { ...activeOrder } : null;
 
     // Optimistic UI update
     setActiveOrder(order);
     if (isNew) {
-      if (!activeOrders.find(o => o.id === order.id)) {
-        setActiveOrders(prev => [...prev, order]);
-      }
+        if (!activeOrders.find(o => o.id === order.id)) {
+            setActiveOrders(prev => [...prev, order]);
+        }
     } else {
-      setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
+        setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
     }
     
     // Do not save pending orders to DB
     if(order.status === 'pending') {
+      console.log('Order is pending, updating local state only:', {
+          id: order.id,
+          items: order.items.length,
+          type: order.order_type
+      });
       return order;
     }
 
+    console.log('Saving order to database...');
     const savedOrder = await saveOrder(order);
 
     if (savedOrder) {
@@ -206,9 +219,16 @@ export default function Home() {
 
 
   const addToOrder = async (item: MenuItem, portion: string) => {
-    if (!user?.restaurant_id) return;
+    console.log('Adding to order:', { item, portion });
+    
+    if (!user?.restaurant_id) {
+        console.error('No restaurant_id found');
+        return;
+    }
+    
     const currentOrderType = orderType === 'Dine In' ? 'dine-in' : 'delivery';
     if (currentOrderType === 'dine-in' && !tableNumber) {
+        console.log('No table selected for dine-in order');
         toast({
             variant: "destructive",
             title: "No table selected",
