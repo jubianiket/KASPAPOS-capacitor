@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import type { User } from '@/types';
 import { Separator } from './ui/separator';
-import { supabase } from '@/lib/supabase';
 
 
 interface SidebarProps {
@@ -53,8 +52,7 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
     }
   }, [isOpen]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
     localStorage.removeItem('user');
     setUser(null);
     onOpenChange(false);
@@ -122,5 +120,3 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
     </Sheet>
   );
 }
-
-    

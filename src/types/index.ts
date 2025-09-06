@@ -53,7 +53,7 @@ export interface KitchenOrder {
 }
 
 export interface User {
-    id: number; // Changed back to number to match public.users table schema
+    id: number; 
     username: string;
     role: string;
     name: string;
@@ -61,6 +61,7 @@ export interface User {
     email: string;
     restaurant_id: number;
     restaurant_name?: string; // Add restaurant name
+    password?: string;
 }
 
 export interface Restaurant {
