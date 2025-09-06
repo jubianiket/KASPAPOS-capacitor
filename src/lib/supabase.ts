@@ -251,15 +251,8 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 
 // --- User Authentication & Restaurant Management ---
 
-export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'auth_user_id'>): Promise<User | null> => {
-    // Step 1: Create the Supabase auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-    if(authError || !authData.user) {
-        console.error("Error during Supabase auth signup:", authError);
-        return null;
-    }
-    
-    // Step 2: Create a new restaurant for this user
+export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
+    // Step 1: Create a new restaurant for this user
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -268,18 +261,16 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Best-effort cleanup
-        // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
 
-    // Step 3: Create the user profile in public.users, linking to auth and restaurant
+    // Step 2: Create the user profile in public.users, linking to the restaurant
     const userProfileToCreate = {
         ...userData,
         email, 
+        password, // Storing password directly as requested
         role: 'admin',
         restaurant_id: restaurantData.id,
-        auth_user_id: authData.user.id, // This is the crucial link to the auth user
     };
     
     const { data: newUser, error: userError } = await supabase
@@ -290,73 +281,43 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
-        // Best-effort cleanup
+        // Clean up created restaurant if user creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
-        // await supabase.auth.admin.deleteUser(authData.user.id);
         return null;
     }
     
     return newUser as User;
 };
 
-
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
-    // 1. Sign in using the identifier as email and the password.
-    // Supabase signInWithPassword can handle email directly.
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: identifier,
-        password,
-    });
-
-    if (authError || !authData.user) {
-        // If it fails, it might be a username. Let's try finding the user.
-        const { data: userRecord, error: findUserError } = await supabase
-            .from('users')
-            .select('email')
-            .eq('username', identifier)
-            .single();
-
-        if (findUserError || !userRecord) {
-            console.error("Could not find user by email or username:", authError || findUserError);
-            return null;
-        }
-
-        // Try signing in again with the found email
-        const { data: retryAuthData, error: retryAuthError } = await supabase.auth.signInWithPassword({
-            email: userRecord.email,
-            password,
-        });
-
-        if (retryAuthError || !retryAuthData.user) {
-            console.error("Invalid password for user:", retryAuthError);
-            return null;
-        }
-        // Use the successful retry data
-        Object.assign(authData, retryAuthData);
-    }
-    
-    // 2. Fetch the full user profile from your 'users' table using the auth_user_id.
-    const { data: userProfile, error: profileError } = await supabase
+    // 1. Find user by email or username
+    const { data: user, error } = await supabase
         .from('users')
         .select('*')
-        .eq('auth_user_id', authData.user.id)
+        .or(`email.eq.${identifier},username.eq.${identifier}`)
         .single();
-    
-    if (profileError || !userProfile) {
-        console.error("Error fetching user profile:", profileError);
-        await supabase.auth.signOut();
+
+    if (error || !user) {
+        console.error("User not found:", error);
         return null;
     }
 
-    const restaurant = await getSettings(userProfile.restaurant_id);
+    // 2. Check if password matches
+    if (user.password !== password) {
+        console.error("Invalid password");
+        return null;
+    }
+
+    // 3. Fetch restaurant details
+    const restaurant = await getSettings(user.restaurant_id);
     if (!restaurant) {
-        console.error(`Sign-in failed: User ${userProfile.id} has an invalid restaurant_id: ${userProfile.restaurant_id}`);
-        await supabase.auth.signOut();
+        console.error(`Sign-in failed: User ${user.id} has an invalid restaurant_id: ${user.restaurant_id}`);
         return null;
     }
     
+    // 4. Return combined user and restaurant info
     return {
-        ...userProfile,
+        ...user,
         restaurant_name: restaurant.restaurant_name
     } as User;
 };

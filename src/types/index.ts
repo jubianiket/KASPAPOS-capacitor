@@ -54,7 +54,6 @@ export interface KitchenOrder {
 
 export interface User {
     id: number; 
-    auth_user_id: string; // Add auth_user_id to link to Supabase auth
     username: string;
     role: string;
     name: string;
@@ -62,6 +61,7 @@ export interface User {
     email: string;
     restaurant_id: number;
     restaurant_name?: string; // Add restaurant name
+    password?: string;
 }
 
 export interface Restaurant {
