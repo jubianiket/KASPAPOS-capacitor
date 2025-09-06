@@ -6,7 +6,11 @@ import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: true,
+    }
+});
 
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
@@ -248,24 +252,19 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
 // --- User Authentication & Restaurant Management ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email'>): Promise<User | null> => {
-    // 1. Check if user already exists by email or username
-    const { data: existingUser, error: existingUserError } = await supabase
-        .from('users')
-        .select('id')
-        .or(`email.eq.${email},username.eq.${userData.username}`)
-        .maybeSingle();
-
-    if (existingUserError && existingUserError.code !== 'PGRST116') { // PGRST116 means no rows found, which is OK
-        console.error("Error checking for existing user:", existingUserError);
-        return null;
-    }
     
-    if (existingUser) {
-        // This is a normal condition, not an error, so we don't log it. The UI will handle the message.
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+
+    if(authError) {
+        console.error("Error during Supabase auth signup:", authError);
         return null;
     }
 
-    // 2. Create a new restaurant for the user
+    if (!authData.user) {
+        console.error("No user returned from Supabase auth signup");
+        return null;
+    }
+
     const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .insert({ restaurant_name: `${userData.name}'s Restaurant` })
@@ -277,11 +276,10 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         return null;
     }
 
-    // 3. Create the new user with the restaurant_id
     const userToCreate = {
         ...userData,
+        id: authData.user.id, // Use the ID from Supabase Auth
         email,
-        password, // Storing plain text password as requested
         role: 'admin',
         restaurant_id: restaurantData.id,
     };
@@ -293,9 +291,10 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         .single();
 
     if (userError || !newUser) {
-        console.error("Error creating user:", userError);
-        // Attempt to clean up the created restaurant if user creation fails
+        console.error("Error creating user profile:", userError);
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
+        // Consider deleting the auth user as well for cleanup
+        // await supabase.auth.api.deleteUser(authData.user.id);
         return null;
     }
     
@@ -304,47 +303,38 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
 
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
-    const isNumeric = !isNaN(Number(identifier));
     
-    let orConditions = `email.eq.${identifier},username.eq.${identifier}`;
-    if(isNumeric){
-      orConditions += `,phone.eq.${Number(identifier)}`;
-    }
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: identifier, // Assuming identifier is always email for simplicity now
+        password,
+    });
 
-    const { data: user, error } = await supabase
+    if (authError || !authData.user) {
+        console.error("Error signing in with Supabase auth:", authError);
+        // Fallback or handling for non-email identifiers might be needed here
+        return null;
+    }
+    
+    const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .or(orConditions)
+        .eq('id', authData.user.id)
         .single();
-
-    // The specific error code for zero rows from a .single() query is 'PGRST116'.
-    // We only want to log an error if it's something other than 'user not found'.
-    if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching user:", error);
+    
+    if (profileError) {
+        console.error("Error fetching user profile:", profileError);
         return null;
     }
-    
-    if (!user) {
-        return null; // User not found
-    }
 
-    if (user.password !== password) {
-        return null; // Password mismatch
-    }
-
-    // Verify restaurant exists before returning user data
-    const restaurant = await getSettings(user.restaurant_id);
+    const restaurant = await getSettings(userProfile.restaurant_id);
     if (!restaurant) {
-        console.error(`Sign-in failed: User ${user.id} has an invalid restaurant_id: ${user.restaurant_id}`);
+        console.error(`Sign-in failed: User ${userProfile.id} has an invalid restaurant_id: ${userProfile.restaurant_id}`);
         return null;
     }
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
-
     return {
-        ...userWithoutPassword,
-        restaurant_name: restaurant.restaurant_name // Attach restaurant name
+        ...userProfile,
+        restaurant_name: restaurant.restaurant_name
     } as User;
 };
 
@@ -386,3 +376,4 @@ export const updateSettings = async (restaurantId: number, settings: Partial<Res
     
     return data as Restaurant | null;
 }
+

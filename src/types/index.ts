@@ -53,14 +53,13 @@ export interface KitchenOrder {
 }
 
 export interface User {
-    id: number;
+    id: string; // Changed to string to match Supabase Auth UUID
     username: string;
     role: string;
     name: string;
     phone: number;
     email: string;
     restaurant_id: number;
-    password?: string; // Make password optional as it should not be client-facing
     restaurant_name?: string; // Add restaurant name
 }
 

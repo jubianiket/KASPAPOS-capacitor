@@ -57,6 +57,7 @@ export default function LoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
+        // For now, we assume the identifier is the email for login
         const user = await signIn(identifier, password);
 
         if (user) {
@@ -70,7 +71,7 @@ export default function LoginPage() {
             toast({
                 variant: 'destructive',
                 title: 'Login Failed',
-                description: 'Invalid credentials. Please check your details and try again.',
+                description: 'Invalid credentials. Please check your email and password.',
             });
         }
         setIsLoading(false);
@@ -86,18 +87,18 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>Enter your details to access your account.</CardDescription>
+                    <CardDescription>Enter your email and password to access your account.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="identifier">Email, Username, or Phone</Label>
+                            <Label htmlFor="identifier">Email</Label>
                             <Input
                                 id="identifier"
                                 name="identifier"
-                                type="text"
-                                autoComplete="username"
-                                placeholder="Enter your email, username, or phone"
+                                type="email"
+                                autoComplete="email"
+                                placeholder="Enter your email"
                                 value={identifier}
                                 onChange={(e) => setIdentifier(e.target.value)}
                                 required
@@ -134,3 +135,4 @@ export default function LoginPage() {
         </div>
     );
 }
+
