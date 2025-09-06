@@ -86,18 +86,18 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>Enter your email or username to access your account.</CardDescription>
+                    <CardDescription>Enter your email, username, or phone to access your account.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="identifier">Email or Username</Label>
+                            <Label htmlFor="identifier">Email, Username, or Phone</Label>
                             <Input
                                 id="identifier"
                                 name="identifier"
                                 type="text"
-                                autoComplete="email username"
-                                placeholder="Enter your email or username"
+                                autoComplete="email username tel"
+                                placeholder="Enter your identifier"
                                 value={identifier}
                                 onChange={(e) => setIdentifier(e.target.value)}
                                 required

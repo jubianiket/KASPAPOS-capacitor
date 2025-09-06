@@ -6,11 +6,7 @@ import type { Order, MenuItem, KitchenOrder, User, Restaurant } from '@/types';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        persistSession: true,
-    }
-});
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const fromSupabase = (order: any): Order => {
     if (!order) return order;
@@ -249,7 +245,7 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     return data as KitchenOrder;
 }
 
-// --- User Authentication & Restaurant Management ---
+// --- User Authentication & Restaurant Management (Using public.users table only) ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {
     // Step 1: Create a new restaurant for this user
@@ -264,7 +260,7 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
         return null;
     }
 
-    // Step 2: Create the user profile in public.users, linking to the restaurant
+    // Step 2: Create the user profile in public.users, linking to the new restaurant
     const userProfileToCreate = {
         ...userData,
         email, 
@@ -290,21 +286,21 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 };
 
 export const signIn = async (identifier: string, password: string): Promise<User | null> => {
-    // 1. Find user by email or username
+    // 1. Find user by email, username, or phone number
     const { data: user, error } = await supabase
         .from('users')
         .select('*')
-        .or(`email.eq.${identifier},username.eq.${identifier}`)
+        .or(`email.eq.${identifier},username.eq.${identifier},phone.eq.${identifier}`)
         .single();
 
     if (error || !user) {
-        console.error("User not found:", error);
+        console.error("User not found:", error ? error.message : 'No user matched identifier');
         return null;
     }
 
     // 2. Check if password matches
     if (user.password !== password) {
-        console.error("Invalid password");
+        console.error("Invalid password for user:", user.email);
         return null;
     }
 
@@ -316,6 +312,7 @@ export const signIn = async (identifier: string, password: string): Promise<User
     }
     
     // 4. Return combined user and restaurant info
+    console.log(`Sign-in successful for user: ${user.email}`);
     return {
         ...user,
         restaurant_name: restaurant.restaurant_name
