@@ -274,8 +274,6 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (restaurantError || !restaurantData) {
         console.error("Error creating restaurant:", restaurantError);
-        // Clean up the created auth user if restaurant creation fails
-        // await supabase.auth.api.deleteUser(authData.user.id); // This requires admin privileges, skip on client-side
         return null;
     }
 
@@ -295,7 +293,6 @@ export const signUp = async (email: string, password: string, userData: Omit<Use
 
     if (userError || !newUser) {
         console.error("Error creating user profile:", userError);
-        // Clean up created restaurant if user profile creation fails
         await supabase.from('restaurants').delete().eq('id', restaurantData.id);
         return null;
     }
@@ -325,7 +322,6 @@ export const signIn = async (identifier: string, password: string): Promise<User
     
     if (profileError || !userProfile) {
         console.error("Error fetching user profile:", profileError);
-        // If the profile doesn't exist, sign the user out to prevent a broken state
         await supabase.auth.signOut();
         return null;
     }
