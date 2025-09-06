@@ -59,10 +59,11 @@ const toSupabase = (order: Order) => {
 
 export const getMenuItems = async (restaurantId: number): Promise<MenuItem[]> => {
     console.log('[Supabase] Attempting to fetch menu items for restaurant:', restaurantId);
-    console.log('[Supabase] Config:', { 
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    });
+    
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        console.error('[Supabase] Supabase config is missing.');
+        return [];
+    }
 
     try {
         const { data, error } = await supabase

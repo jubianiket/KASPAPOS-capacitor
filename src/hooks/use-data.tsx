@@ -24,13 +24,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // This effect listens for changes in the user stored in localStorage
     // which typically happens on login/logout or when the page loads.
     const userStr = localStorage.getItem('user');
-    console.log('[DataProvider] Reading user from localStorage:', { userStr });
     if (userStr) {
       const parsedUser = JSON.parse(userStr);
-      console.log('[DataProvider] Parsed user:', { parsedUser });
       setUser(parsedUser);
     } else {
-      console.log('[DataProvider] No user found in localStorage');
       setUser(null);
     }
   }, [pathname]); // Re-check user on route change
@@ -38,8 +35,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchMenu = useCallback(async () => {
     console.log('[DataProvider] Fetching menu, user state:', { 
       hasUser: !!user, 
-      restaurantId: user?.restaurant_id,
-      user: user // Log the full user object to debug
+      restaurantId: user?.restaurant_id 
     });
     
     if (!user?.restaurant_id) {
@@ -52,7 +48,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     // Check if Supabase environment variables are set
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error('[DataProvider] Supabase configuration is missing. Please check .env.local file');
+        console.error('[DataProvider] Supabase configuration is missing. Please check .env file');
         setIsMenuLoading(false);
         return;
     }
@@ -68,7 +64,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch (error) {
         console.error("[DataProvider] Failed to fetch menu items:", error);
         setMenuItems([]); // Set to empty array on error to avoid showing stale data
-        // You might want to show a toast notification here about the error
     } finally {
         setIsMenuLoading(false);
     }
