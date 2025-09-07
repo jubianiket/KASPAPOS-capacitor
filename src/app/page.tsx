@@ -7,7 +7,6 @@ import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order, User, Restaurant } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Utensils, Bike, Search, PlusCircle } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +17,8 @@ import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Helper to generate temporary client-side IDs
 const tempId = () => -Math.floor(Math.random() * 1000000);
@@ -459,19 +460,22 @@ export default function Home() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-3">Create Order</h2>
             <div className="flex items-center gap-4 mb-6">
-              <ToggleGroup 
-                type="single" 
-                value={orderType} 
-                onValueChange={handleOrderTypeChange}
-                className="bg-background rounded-lg p-1 border"
-              >
-                <ToggleGroupItem value="Dine In" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                  <Utensils /> Dine In
-                </ToggleGroupItem>
-                <ToggleGroupItem value="Delivery" className="gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                  <Bike /> Delivery
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <div className="bg-muted p-1 rounded-lg border flex items-center">
+                  <Button 
+                    variant={orderType === 'Dine In' ? 'secondary' : 'ghost'} 
+                    onClick={() => handleOrderTypeChange('Dine In')}
+                    className="gap-2"
+                  >
+                     <Utensils /> Dine In
+                  </Button>
+                  <Button 
+                    variant={orderType === 'Delivery' ? 'secondary' : 'ghost'} 
+                    onClick={() => handleOrderTypeChange('Delivery')}
+                    className="gap-2"
+                  >
+                     <Bike /> Delivery
+                  </Button>
+              </div>
                {orderType === 'Delivery' && (
                   <Button variant="outline" onClick={handleNewDeliveryOrder}>
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -528,22 +532,27 @@ export default function Home() {
                     <h3 className="text-lg font-semibold">Menu Categories</h3>
                     <CustomItemDialog onAddItem={addCustomItemToOrder} />
                 </div>
-                <ToggleGroup 
-                    type="single" 
-                    value={selectedCategory} 
-                    onValueChange={handleCategoryChange}
-                    className="flex-wrap justify-start"
-                >
-                {isMenuLoading ? (
-                    <Skeleton className="h-9 w-full" />
-                ) : (
-                  categories.map(category => (
-                      <ToggleGroupItem key={category} value={category}>
-                          {category}
-                      </ToggleGroupItem>
-                  ))
-                )}
-                </ToggleGroup>
+                <div className="relative">
+                  <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex space-x-2 pb-4">
+                       {isMenuLoading ? (
+                         <Skeleton className="h-9 w-full" />
+                       ) : (
+                         categories.map(category => (
+                           <Button
+                             key={category}
+                             variant={selectedCategory === category ? "secondary" : "outline"}
+                             onClick={() => handleCategoryChange(category)}
+                             className={cn("whitespace-nowrap")}
+                           >
+                             {category}
+                           </Button>
+                         ))
+                       )}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </div>
             </div>
             <MenuGrid 
               menuItems={menuItems}
@@ -569,5 +578,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

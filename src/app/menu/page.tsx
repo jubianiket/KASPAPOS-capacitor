@@ -5,7 +5,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { MenuItem, GroupedMenuItem, User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { addMenuItem, updateMenuItem, deleteMenuItem } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,8 @@ import MenuManagementGrid from '@/components/menu-management-grid';
 import MenuItemFormDialog from '@/components/menu-item-form-dialog';
 import { useData } from '@/hooks/use-data';
 import { Input } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export default function MenuPage() {
   const { menuItems, isMenuLoading, onRefreshMenu } = useData();
@@ -166,22 +167,27 @@ export default function MenuPage() {
          <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Menu Categories</h3>
         </div>
-        <ToggleGroup 
-            type="single" 
-            value={selectedCategory} 
-            onValueChange={handleCategoryChange}
-            className="flex-wrap justify-start"
-        >
-        {isMenuLoading ? (
-            <Skeleton className="h-9 w-full" />
-        ) : (
-            categories.map(category => (
-                <ToggleGroupItem key={category} value={category}>
+        <div className="relative">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex space-x-2 pb-4">
+              {isMenuLoading ? (
+                <Skeleton className="h-9 w-full" />
+              ) : (
+                categories.map(category => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "secondary" : "outline"}
+                    onClick={() => handleCategoryChange(category)}
+                    className={cn("whitespace-nowrap")}
+                  >
                     {category}
-                </ToggleGroupItem>
-            ))
-        )}
-        </ToggleGroup>
+                  </Button>
+                ))
+              )}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
       </div>
 
       <MenuManagementGrid
