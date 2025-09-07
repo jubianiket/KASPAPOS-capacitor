@@ -8,6 +8,7 @@ export interface MenuItem {
   portion?: string;
   is_active?: boolean;
   restaurant_id: number;
+  dietary_type?: 'veg' | 'non-veg';
 }
 
 export interface GroupedMenuItem {
@@ -15,6 +16,7 @@ export interface GroupedMenuItem {
   category: string;
   baseRate: number;
   portions: MenuItem[];
+  dietary_type?: 'veg' | 'non-veg';
 }
 
 export interface OrderItem extends MenuItem {

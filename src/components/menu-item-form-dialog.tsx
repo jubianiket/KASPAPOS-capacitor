@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { MenuItem } from '@/types';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { Leaf, Drumstick } from 'lucide-react';
 
 const menuItemSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -25,6 +27,7 @@ const menuItemSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   portion: z.string().min(1, 'Portion is required'),
   is_active: z.boolean().default(true),
+  dietary_type: z.enum(['veg', 'non-veg']).optional().nullable(),
 });
 
 type MenuItemFormData = z.infer<typeof menuItemSchema>;
@@ -55,6 +58,7 @@ export default function MenuItemFormDialog({
       category: '',
       portion: 'Regular',
       is_active: true,
+      dietary_type: undefined,
     },
   });
 
@@ -68,6 +72,7 @@ export default function MenuItemFormDialog({
         category: '',
         portion: 'Regular',
         is_active: true,
+        dietary_type: undefined,
       });
     }
   }, [item, reset]);
@@ -131,6 +136,26 @@ export default function MenuItemFormDialog({
                     </div>
                 )}
                 />
+             </div>
+             <div className="space-y-2">
+                <Label>Dietary Type</Label>
+                 <Controller
+                    name="dietary_type"
+                    control={control}
+                    render={({ field }) => (
+                        <ToggleGroup 
+                            type="single"
+                            variant="outline"
+                            value={field.value ?? ""}
+                            onValueChange={field.onChange}
+                            className="justify-start"
+                        >
+                            <ToggleGroupItem value="veg" aria-label="Set as veg"><Leaf className="h-4 w-4 mr-2 text-green-600"/>Veg</ToggleGroupItem>
+                            <ToggleGroupItem value="non-veg" aria-label="Set as non-veg"><Drumstick className="h-4 w-4 mr-2 text-red-600"/>Non-Veg</ToggleGroupItem>
+                        </ToggleGroup>
+                    )}
+                 />
+                 {errors.dietary_type && <p className="text-sm text-destructive">{errors.dietary_type.message}</p>}
              </div>
             <Controller
               name="is_active"

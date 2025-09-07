@@ -7,7 +7,7 @@ import Bill from '@/components/bill';
 import MenuGrid from '@/components/menu-grid';
 import type { OrderItem, MenuItem, Order, User, Restaurant } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Utensils, Bike, Search, PlusCircle } from 'lucide-react';
+import { Utensils, Bike, Search, PlusCircle, Leaf, Drumstick } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
@@ -18,6 +18,7 @@ import { useData } from '@/hooks/use-data';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
 // Helper to generate temporary client-side IDs
@@ -30,6 +31,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDietaryType, setSelectedDietaryType] = useState<string>('all');
 
   const router = useRouter();
   const { toast } = useToast();
@@ -44,8 +46,11 @@ export default function Home() {
     if(searchTerm) {
       items = items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
+    if (selectedDietaryType !== 'all') {
+      items = items.filter(item => item.dietary_type === selectedDietaryType);
+    }
     return items;
-  }, [allMenuItems, searchTerm]);
+  }, [allMenuItems, searchTerm, selectedDietaryType]);
 
 
   useEffect(() => {
@@ -284,6 +289,7 @@ export default function Home() {
       portion: 'Custom',
       is_active: true,
       restaurant_id: user.restaurant_id,
+      dietary_type: 'veg', // Default custom items to veg, can be changed later if needed
     };
     addToOrder(customItem, 'Custom');
   };
@@ -474,14 +480,26 @@ export default function Home() {
               </div>
             )}
             <div className="mb-6 space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search for menu items..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex gap-4">
+                    <div className="relative flex-grow">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search for menu items..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      value={selectedDietaryType}
+                      onValueChange={(value) => setSelectedDietaryType(value || 'all')}
+                    >
+                      <ToggleGroupItem value="all" aria-label="All items">All</ToggleGroupItem>
+                      <ToggleGroupItem value="veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
+                      <ToggleGroupItem value="non-veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
+                    </ToggleGroup>
                 </div>
 
                  <div className="flex justify-between items-center">

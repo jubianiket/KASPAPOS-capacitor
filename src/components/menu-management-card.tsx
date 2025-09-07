@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { MenuItem, GroupedMenuItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Leaf, Drumstick } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,11 +21,24 @@ interface MenuManagementCardProps {
   onDelete: (portionId: number) => void;
 }
 
+const DietaryIcon = ({ type }: { type: 'veg' | 'non-veg' | string | undefined | null }) => {
+  if (type === 'veg') {
+    return <Leaf className="h-4 w-4 text-green-600" />;
+  }
+  if (type === 'non-veg') {
+    return <Drumstick className="h-4 w-4 text-red-600" />;
+  }
+  return null;
+}
+
 export default function MenuManagementCard({ item, onEdit, onDelete }: MenuManagementCardProps) {
   return (
     <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle className="text-lg">{item.name}</CardTitle>
+        <div className="flex justify-between items-start">
+            <CardTitle className="text-lg">{item.name}</CardTitle>
+            <DietaryIcon type={item.dietary_type} />
+        </div>
         <CardDescription>{item.category}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-3">

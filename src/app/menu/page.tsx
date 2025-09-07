@@ -15,13 +15,16 @@ import { useData } from '@/hooks/use-data';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Leaf, Drumstick } from 'lucide-react';
 
 export default function MenuPage() {
-  const { menuItems, isMenuLoading, onRefreshMenu } = useData();
+  const { menuItems, isMenuLoading, onRefreshAll: onRefreshMenu } = useData();
   const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedDietaryType, setSelectedDietaryType] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,10 +56,14 @@ export default function MenuPage() {
     if (!menuItems) return [];
     
     let itemsToGroup = menuItems;
+
     if (searchTerm) {
-        itemsToGroup = menuItems.filter(item => 
+        itemsToGroup = itemsToGroup.filter(item => 
             item.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
+    }
+    if (selectedDietaryType !== 'all') {
+      itemsToGroup = itemsToGroup.filter(item => item.dietary_type === selectedDietaryType);
     }
     
     const itemMap = new Map<string, GroupedMenuItem>();
@@ -68,13 +75,14 @@ export default function MenuPage() {
           category: item.category,
           baseRate: item.rate,
           portions: [],
+          dietary_type: item.dietary_type,
         };
         itemMap.set(item.name, group);
       }
       group.portions.push(item);
     });
     return Array.from(itemMap.values());
-  }, [menuItems, searchTerm]);
+  }, [menuItems, searchTerm, selectedDietaryType]);
 
   const handleCategoryChange = (value: string) => {
     if (value) {
@@ -155,15 +163,28 @@ export default function MenuPage() {
       </div>
       
        <div className="mb-6 space-y-4">
-         <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input 
-                placeholder="Search for menu items..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+         <div className="flex gap-4">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                    placeholder="Search for menu items..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+             <ToggleGroup
+              type="single"
+              variant="outline"
+              value={selectedDietaryType}
+              onValueChange={(value) => setSelectedDietaryType(value || 'all')}
+            >
+              <ToggleGroupItem value="all" aria-label="All items">All</ToggleGroupItem>
+              <ToggleGroupItem value="veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
+              <ToggleGroupItem value="non-veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
+            </ToggleGroup>
          </div>
+
          <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Menu Categories</h3>
         </div>

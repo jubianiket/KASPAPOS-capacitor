@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Plus, Edit, Check } from 'lucide-react';
+import { Plus, Edit, Check, Leaf, Drumstick } from 'lucide-react';
 import type { MenuItem, GroupedMenuItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,17 @@ interface MenuItemCardProps {
   // This prop is no longer needed here as updates are handled on the menu management page
   onUpdateItem?: (item: MenuItem) => void;
 }
+
+const DietaryIcon = ({ type }: { type: 'veg' | 'non-veg' | string | undefined | null }) => {
+  if (type === 'veg') {
+    return <Leaf className="h-4 w-4 text-green-600" />;
+  }
+  if (type === 'non-veg') {
+    return <Drumstick className="h-4 w-4 text-red-600" />;
+  }
+  return null;
+}
+
 
 export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -46,7 +57,10 @@ export default function MenuItemCard({ item, onAddToOrder }: MenuItemCardProps) 
   return (
     <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg">
       <CardContent className="p-4 flex-grow">
-        <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
+        <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-base font-semibold mb-1">{item.name}</CardTitle>
+            <DietaryIcon type={item.dietary_type} />
+        </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <div className="flex items-center gap-2">
