@@ -289,7 +289,7 @@ export default function Home() {
       portion: 'Custom',
       is_active: true,
       restaurant_id: user.restaurant_id,
-      dietary_type: 'veg', // Default custom items to veg, can be changed later if needed
+      dietary_type: 'Veg', // Default custom items to veg, can be changed later if needed
     };
     addToOrder(customItem, 'Custom');
   };
@@ -497,8 +497,8 @@ export default function Home() {
                       onValueChange={(value) => setSelectedDietaryType(value || 'all')}
                     >
                       <ToggleGroupItem value="all" aria-label="All items">All</ToggleGroupItem>
-                      <ToggleGroupItem value="veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
-                      <ToggleGroupItem value="non-veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
+                      <ToggleGroupItem value="Veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
+                      <ToggleGroupItem value="Non Veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
                     </ToggleGroup>
                 </div>
 

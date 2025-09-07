@@ -27,7 +27,7 @@ const menuItemSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   portion: z.string().min(1, 'Portion is required'),
   is_active: z.boolean().default(true),
-  dietary_type: z.enum(['veg', 'non-veg']).optional().nullable(),
+  dietary_type: z.enum(['Veg', 'Non Veg']).optional().nullable(),
 });
 
 type MenuItemFormData = z.infer<typeof menuItemSchema>;
@@ -150,8 +150,8 @@ export default function MenuItemFormDialog({
                             onValueChange={field.onChange}
                             className="justify-start"
                         >
-                            <ToggleGroupItem value="veg" aria-label="Set as veg"><Leaf className="h-4 w-4 mr-2 text-green-600"/>Veg</ToggleGroupItem>
-                            <ToggleGroupItem value="non-veg" aria-label="Set as non-veg"><Drumstick className="h-4 w-4 mr-2 text-red-600"/>Non-Veg</ToggleGroupItem>
+                            <ToggleGroupItem value="Veg" aria-label="Set as veg"><Leaf className="h-4 w-4 mr-2 text-green-600"/>Veg</ToggleGroupItem>
+                            <ToggleGroupItem value="Non Veg" aria-label="Set as non-veg"><Drumstick className="h-4 w-4 mr-2 text-red-600"/>Non-Veg</ToggleGroupItem>
                         </ToggleGroup>
                     )}
                  />

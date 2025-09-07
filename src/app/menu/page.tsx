@@ -180,8 +180,8 @@ export default function MenuPage() {
               onValueChange={(value) => setSelectedDietaryType(value || 'all')}
             >
               <ToggleGroupItem value="all" aria-label="All items">All</ToggleGroupItem>
-              <ToggleGroupItem value="veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
-              <ToggleGroupItem value="non-veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
+              <ToggleGroupItem value="Veg" aria-label="Veg items"><Leaf className="h-4 w-4 text-green-600"/></ToggleGroupItem>
+              <ToggleGroupItem value="Non Veg" aria-label="Non-veg items"><Drumstick className="h-4 w-4 text-red-600"/></ToggleGroupItem>
             </ToggleGroup>
          </div>
 

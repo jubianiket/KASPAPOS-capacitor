@@ -16,11 +16,11 @@ interface MenuItemCardProps {
   onUpdateItem?: (item: MenuItem) => void;
 }
 
-const DietaryIcon = ({ type }: { type: 'veg' | 'non-veg' | string | undefined | null }) => {
-  if (type === 'veg') {
+const DietaryIcon = ({ type }: { type: 'Veg' | 'Non Veg' | string | undefined | null }) => {
+  if (type === 'Veg') {
     return <Leaf className="h-4 w-4 text-green-600" />;
   }
-  if (type === 'non-veg') {
+  if (type === 'Non Veg') {
     return <Drumstick className="h-4 w-4 text-red-600" />;
   }
   return null;
