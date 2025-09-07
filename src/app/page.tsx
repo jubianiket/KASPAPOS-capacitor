@@ -142,10 +142,10 @@ export default function Home() {
     // Do not save pending orders to DB
     if(order.status === 'pending') {
       setActiveOrder(orderWithTotals);
-      return order;
+      return orderWithTotals;
     }
 
-    const savedOrder = await saveOrder(order);
+    const savedOrder = await saveOrder(orderWithTotals);
 
     if (savedOrder) {
       await onRefreshAll(); // Refresh all data
