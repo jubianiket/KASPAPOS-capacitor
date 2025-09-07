@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils, Send, CheckCheck } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, X, Bike, Utensils, Send, CheckCheck, Share2 } from 'lucide-react';
 import type { OrderItem, MenuItem, Order, Restaurant } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import { Badge } from './ui/badge';
+import BillShareDialog from './bill-share-dialog';
 
 interface BillProps {
   order: Order | null;
@@ -128,6 +129,29 @@ export default function Bill({
                 </Button>
             );
         case 'received':
+            if (order.order_type === 'delivery') {
+                return (
+                    <div className="flex flex-col gap-2 w-full">
+                        <BillShareDialog order={order} settings={settings}>
+                             <Button className="w-full" variant="outline">
+                                <Share2 className="mr-2 h-4 w-4"/> Generate & Share Bill
+                            </Button>
+                        </BillShareDialog>
+                        <PaymentDialog 
+                            order={order} 
+                            total={total} 
+                            onCompleteOrder={handleCompleteOrder} 
+                            disabled={isPaymentDisabled()}
+                            onNewOrder={onNewOrder}
+                            settings={settings}
+                        >
+                            <Button className="w-full" disabled={isPaymentDisabled()}>
+                                <CheckCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                            </Button>
+                        </PaymentDialog>
+                    </div>
+                )
+            }
              return (
                  <PaymentDialog 
                     order={order} 
