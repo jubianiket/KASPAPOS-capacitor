@@ -11,7 +11,7 @@ import { Utensils, Bike, Search, PlusCircle } from 'lucide-react';
 import TableSelection from '@/components/table-selection';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActiveOrders from '@/components/active-orders';
-import { getActiveOrders, saveOrder, deleteOrder, createKitchenOrder, getSettings } from '@/lib/supabase';
+import { saveOrder, deleteOrder, createKitchenOrder } from '@/lib/supabase';
 import DeliveryDetailsDialog from '@/components/delivery-details-dialog';
 import CustomItemDialog from '@/components/custom-item-dialog';
 import { useData } from '@/hooks/use-data';
@@ -24,13 +24,10 @@ import { cn } from '@/lib/utils';
 const tempId = () => -Math.floor(Math.random() * 1000000);
 
 export default function Home() {
-  const { menuItems: allMenuItems, isMenuLoading, onRefreshMenu } = useData();
+  const { menuItems: allMenuItems, isMenuLoading, settings, activeOrders, isOrdersLoading, onRefreshAll } = useData();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [settings, setSettings] = useState<Restaurant | null>(null);
   const [isDeliveryDialogToggled, setDeliveryDialogToggled] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -51,18 +48,6 @@ export default function Home() {
   }, [allMenuItems, searchTerm]);
 
 
-  const fetchInitialData = useCallback(async (restaurantId: number) => {
-      setIsLoading(true);
-      const [orders, fetchedSettings] = await Promise.all([
-          getActiveOrders(restaurantId),
-          getSettings(restaurantId),
-      ]);
-      setActiveOrders(orders); // Fetches all non-paid orders
-      setSettings(fetchedSettings);
-      
-      setIsLoading(false);
-  }, []);
-
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
@@ -71,11 +56,8 @@ export default function Home() {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsClient(true);
-        if (parsedUser.restaurant_id) {
-          fetchInitialData(parsedUser.restaurant_id);
-        }
     }
-  }, [router, fetchInitialData]);
+  }, [router]);
   
   useEffect(() => {
       if (menuItems && menuItems.length > 0) {
@@ -130,7 +112,6 @@ export default function Home() {
     });
     
     const isNew = !order.id || order.id < 0;
-    const oldOrderState = activeOrder ? { ...activeOrder } : null;
 
     // Recalculate totals before saving
     const subtotal = order.items.reduce((acc, item) => acc + item.rate * item.quantity, 0);
@@ -152,41 +133,20 @@ export default function Home() {
         tax,
         total,
     }
-
-    // Optimistic UI update
-    setActiveOrder(orderWithTotals);
-    if (isNew) {
-      if (!activeOrders.find(o => o.id === order.id)) {
-        setActiveOrders(prev => [...prev, order]);
-      }
-    } else {
-      setActiveOrders(prev => prev.map(o => o.id === order.id ? order : o));
-    }
     
     // Do not save pending orders to DB
     if(order.status === 'pending') {
+      setActiveOrder(orderWithTotals);
       return order;
     }
 
     const savedOrder = await saveOrder(order);
 
     if (savedOrder) {
-      // Update state with the actual data from the database
+      await onRefreshAll(); // Refresh all data
       setActiveOrder(savedOrder);
-      setActiveOrders(prev => {
-        const newOrders = prev.filter(o => o.id !== order.id); // remove old version (temp or existing)
-        return [...newOrders, savedOrder]; // add new version from DB
-      });
     } else {
-      // Revert on failure
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to save order.' });
-      if (oldOrderState) {
-        setActiveOrder(oldOrderState);
-        setActiveOrders(prev => prev.map(o => o.id === oldOrderState.id ? oldOrderState : o));
-      } else {
-        setActiveOrder(null);
-        setActiveOrders(prev => prev.filter(o => o.id !== order.id));
-      }
     }
     return savedOrder;
   }
@@ -356,7 +316,6 @@ export default function Home() {
     // If order is pending and not saved, just clear it from local state
     if (activeOrder.status === 'pending') {
         setActiveOrder(null);
-        setActiveOrders(prev => prev.filter(o => o.id !== activeOrder.id));
         return;
     }
 
@@ -364,8 +323,7 @@ export default function Home() {
     if(activeOrder.id > 0) {
       const success = await deleteOrder(activeOrder.id, user.restaurant_id);
       if (success) {
-          const newActiveOrders = activeOrders.filter(o => o.id !== activeOrder.id)
-          setActiveOrders(newActiveOrders);
+          await onRefreshAll();
           setActiveOrder(null);
           if(activeOrder.order_type === 'dine-in') {
             setTableNumber(null);
@@ -422,9 +380,7 @@ export default function Home() {
     setActiveOrder(null);
     setTableNumber(null);
     setOrderType('Dine In');
-    if (user?.restaurant_id) {
-      fetchInitialData(user.restaurant_id);
-    }
+    onRefreshAll();
   };
   
   const handleNewDeliveryOrder = () => {
@@ -443,7 +399,7 @@ export default function Home() {
     )
   }
   
-  const pageIsLoading = isLoading || isMenuLoading;
+  const pageIsLoading = isOrdersLoading || isMenuLoading;
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">

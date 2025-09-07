@@ -2,27 +2,35 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
-import type { MenuItem, User } from '@/types';
-import { getMenuItems } from '@/lib/supabase';
+import type { MenuItem, User, Restaurant, Order } from '@/types';
+import { getMenuItems, getSettings, getActiveOrders } from '@/lib/supabase';
 import { usePathname } from 'next/navigation';
 
 interface DataContextProps {
   menuItems: MenuItem[];
   isMenuLoading: boolean;
-  onRefreshMenu: () => Promise<void>;
+  settings: Restaurant | null;
+  isSettingsLoading: boolean;
+  activeOrders: Order[];
+  isOrdersLoading: boolean;
+  onRefreshAll: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextProps | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [settings, setSettings] = useState<Restaurant | null>(null);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  
   const [isMenuLoading, setIsMenuLoading] = useState(true);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(true);
+  
   const [user, setUser] = useState<User | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    // This effect listens for changes in the user stored in localStorage
-    // which typically happens on login/logout or when the page loads.
     const userStr = localStorage.getItem('user');
     if (userStr) {
       const parsedUser = JSON.parse(userStr);
@@ -30,55 +38,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } else {
       setUser(null);
     }
-  }, [pathname]); // Re-check user on route change
+  }, [pathname]);
 
-  const fetchMenu = useCallback(async () => {
-    console.log('[DataProvider] Fetching menu, user state:', { 
-      hasUser: !!user, 
-      restaurantId: user?.restaurant_id 
-    });
-    
+  const fetchAllData = useCallback(async () => {
     if (!user?.restaurant_id) {
-        console.log('[DataProvider] No user or restaurant_id, clearing menu');
-        // If there is no user or no restaurant_id, clear the menu and stop loading.
         setMenuItems([]);
+        setSettings(null);
+        setActiveOrders([]);
         setIsMenuLoading(false);
+        setIsSettingsLoading(false);
+        setIsOrdersLoading(false);
         return;
     }
 
-    // Check if Supabase environment variables are set
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error('[DataProvider] Supabase configuration is missing. Please check .env file');
+        console.error('[DataProvider] Supabase configuration is missing.');
         setIsMenuLoading(false);
+        setIsSettingsLoading(false);
+        setIsOrdersLoading(false);
         return;
     }
     
-    // Set loading state to true before fetching.
     setIsMenuLoading(true);
+    setIsSettingsLoading(true);
+    setIsOrdersLoading(true);
+
     try {
-        // Fetch menu items specifically for the user's restaurant.
-        console.log('[DataProvider] Attempting to fetch menu items for restaurant:', user.restaurant_id);
-        const items = await getMenuItems(user.restaurant_id);
-        console.log('[DataProvider] Successfully fetched menu items:', { count: items.length });
+        const [items, fetchedSettings, orders] = await Promise.all([
+            getMenuItems(user.restaurant_id),
+            getSettings(user.restaurant_id),
+            getActiveOrders(user.restaurant_id)
+        ]);
+
         setMenuItems(items);
+        setSettings(fetchedSettings);
+        setActiveOrders(orders);
+
     } catch (error) {
-        console.error("[DataProvider] Failed to fetch menu items:", error);
-        setMenuItems([]); // Set to empty array on error to avoid showing stale data
+        console.error("[DataProvider] Failed to fetch initial data:", error);
+        setMenuItems([]);
+        setSettings(null);
+        setActiveOrders([]);
     } finally {
         setIsMenuLoading(false);
+        setIsSettingsLoading(false);
+        setIsOrdersLoading(false);
     }
-  }, [user]); // This hook depends on the user object.
+  }, [user]);
 
   useEffect(() => {
-    // This effect triggers the fetchMenu function whenever the user object changes.
-    // This is the core logic that ensures the correct menu is loaded for the current user.
-    fetchMenu();
-  }, [fetchMenu]);
+    fetchAllData();
+  }, [fetchAllData]);
 
   const value = {
     menuItems,
     isMenuLoading,
-    onRefreshMenu: fetchMenu, // Expose a manual refresh function
+    settings,
+    isSettingsLoading,
+    activeOrders,
+    isOrdersLoading,
+    onRefreshAll: fetchAllData,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
