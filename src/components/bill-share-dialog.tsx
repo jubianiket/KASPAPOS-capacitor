@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { BillReceipt } from './bill-receipt';
+import { ScrollArea } from './ui/scroll-area';
 
 interface BillShareDialogProps {
   children: React.ReactNode;
@@ -34,16 +35,16 @@ export default function BillShareDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Bill for Order #{order.id}</DialogTitle>
           <DialogDescription>
             You can share or print this bill for the customer.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-            <BillReceipt order={order} settings={settings} />
-        </div>
+        <ScrollArea className="max-h-[70vh] p-1">
+          <BillReceipt order={order} settings={settings} />
+        </ScrollArea>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Close</Button>

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillReceipt } from './bill-receipt';
 import Image from 'next/image';
+import { ScrollArea } from './ui/scroll-area';
 
 interface PaymentDialogProps {
   children: React.ReactNode;
@@ -79,7 +80,7 @@ export default function PaymentDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild disabled={disabled}>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         {view === 'payment' && (
             <>
                 <DialogHeader>
@@ -92,7 +93,7 @@ export default function PaymentDialog({
                         <p className="text-4xl font-bold text-primary">Rs.{total.toFixed(2)}</p>
                     </div>
 
-                    {settings?.qr_code_url && order?.order_type === 'delivery' && (
+                    {settings?.qr_code_url && (
                       <div className="flex flex-col items-center gap-2">
                         <p className="text-sm font-medium">Scan to Pay</p>
                         <div className="p-2 border rounded-md bg-white">
@@ -142,9 +143,9 @@ export default function PaymentDialog({
                     </DialogTitle>
                     <DialogDescription>The order has been completed. You can print the bill or start a new order.</DialogDescription>
                 </DialogHeader>
-                 <div className="py-4" id="receipt-section">
+                 <ScrollArea className="max-h-[70vh] p-1">
                     <BillReceipt order={completedOrder} settings={settings} />
-                 </div>
+                 </ScrollArea>
                 <DialogFooter className="sm:justify-between gap-2">
                     <Button onClick={handleDialogCloseAndNewOrder} variant="secondary">
                         Start New Order
