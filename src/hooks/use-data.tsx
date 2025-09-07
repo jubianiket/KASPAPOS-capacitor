@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import type { MenuItem, User, Restaurant, Order } from '@/types';
-import { getMenuItems, getSettings, getActiveOrders } from '@/lib/supabase';
+import { getMenuItems, getSettings, getActiveOrders, supabase } from '@/lib/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { usePathname } from 'next/navigation';
 
 interface DataContextProps {
@@ -88,7 +89,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchAllData();
-  }, [fetchAllData]);
+
+    // Set up real-time subscription for orders
+    if (user?.restaurant_id) {
+      // Set up real-time channel
+      const channel = supabase.channel('orders-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `restaurant_id=eq.${user.restaurant_id}`
+          },
+          (payload) => {
+            console.log('[Supabase] Order change received:', payload);
+            // Refresh all data when any order changes
+            fetchAllData();
+          }
+        )
+        .subscribe();
+
+      // Set up periodic polling as backup
+      const pollInterval = setInterval(() => {
+        console.log('[DataProvider] Polling for updates...');
+        fetchAllData();
+      }, 30000); // Poll every 30 seconds
+
+      // Cleanup function
+      return () => {
+        channel.unsubscribe();
+        clearInterval(pollInterval);
+      };
+    }
+  }, [fetchAllData, user?.restaurant_id]);
 
   const value = {
     menuItems,

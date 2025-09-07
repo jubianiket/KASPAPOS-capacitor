@@ -162,17 +162,12 @@ export const getCompletedOrders = async (restaurantId: number): Promise<Order[]>
 }
 
 export const saveOrder = async (order: Order): Promise<Order | null> => {
-    console.log('Attempting to save order:', {
+    console.log('[Supabase] Attempting to save order:', {
         id: order.id,
         status: order.status,
         items: order.items.length,
         type: order.order_type
     });
-
-    if (order.status === 'pending') {
-        console.log('Order is pending, storing in local state only');
-        return order;
-    }
 
     const isNewOrder = order.id <= 0;
     
