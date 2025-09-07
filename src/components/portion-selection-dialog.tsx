@@ -34,30 +34,17 @@ export default function PortionSelectionDialog({
 
   useEffect(() => {
     // Set default selection when dialog opens
-    console.log('[PortionSelectionDialog] Dialog open state changed:', { 
-      isOpen, 
-      portionsAvailable: portions.length,
-      portions: portions.map(p => ({ id: p.id, portion: p.portion, rate: p.rate }))
-    });
     if (isOpen && portions.length > 0) {
-      const defaultPortion = portions[0].portion || 'Regular';
-      console.log('[PortionSelectionDialog] Setting default portion:', defaultPortion);
-      setSelectedPortion(defaultPortion);
+      // Use the actual portion name, even if it's null/undefined
+      const defaultPortionName = portions[0].portion;
+      setSelectedPortion(defaultPortionName || '');
     }
   }, [isOpen, portions]);
 
   const handleConfirm = () => {
-    console.log('[PortionSelectionDialog] Confirming portion selection:', {
-      itemName,
-      selectedPortion,
-      availablePortions: portions.map(p => p.portion)
-    });
-    if (selectedPortion) {
-      console.log('[PortionSelectionDialog] Calling onConfirm with portion:', selectedPortion);
-      onConfirm(selectedPortion);
-    } else {
-      console.warn('[PortionSelectionDialog] No portion selected');
-    }
+    // onConfirm expects a string, so we pass the selectedPortion, which could be an empty string.
+    // The parent component will handle defaulting it to 'Regular' if necessary.
+    onConfirm(selectedPortion);
   };
 
   return (
@@ -75,16 +62,20 @@ export default function PortionSelectionDialog({
                 variant="outline"
                 value={selectedPortion}
                 onValueChange={(value) => {
-                    console.log('[PortionSelectionDialog] Portion selection changed:', { value });
-                    if (value) setSelectedPortion(value);
+                    if (value !== null) setSelectedPortion(value);
                 }}
                 className="flex-wrap justify-center"
             >
                 {portions.map((portionItem) => (
-                    <ToggleGroupItem key={portionItem.id} value={portionItem.portion || 'Regular'} className="gap-2">
+                    <ToggleGroupItem 
+                        key={portionItem.id} 
+                        value={portionItem.portion || ''} 
+                        className="gap-2"
+                        aria-label={portionItem.portion || 'Regular'}
+                    >
                         <CookingPot className="h-4 w-4" />
                         <div>
-                            <span>{portionItem.portion}</span>
+                            <span>{portionItem.portion || 'Regular'}</span>
                             <span className="text-xs text-muted-foreground ml-2">Rs.{portionItem.rate.toFixed(2)}</span>
                         </div>
                     </ToggleGroupItem>
@@ -95,11 +86,9 @@ export default function PortionSelectionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!selectedPortion}>Add to Order</Button>
+          <Button onClick={handleConfirm} disabled={selectedPortion === null}>Add to Order</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    

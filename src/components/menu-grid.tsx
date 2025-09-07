@@ -55,6 +55,7 @@ export default function MenuGrid({ menuItems, isLoading, onAddToOrder, selectedC
           category: item.category,
           baseRate: item.rate, // Use first item's rate as a base for display
           portions: [],
+          dietary_type: item.dietary_type
         };
         itemMap.set(item.name, group);
       }
@@ -68,29 +69,11 @@ export default function MenuGrid({ menuItems, isLoading, onAddToOrder, selectedC
     setCurrentPage(1); // Reset to first page when category changes
   }, [selectedCategory]);
 
-  // This function is now unused as price updates happen on the menu management page.
-  // Kept here for potential future re-integration if needed.
-  const handleUpdateItem = async (updatedItem: MenuItem) => {
-    // This logic should be moved to the menu management page for clarity
-  };
-
   const handleSelectItemForPortion = (item: GroupedMenuItem) => {
-    console.log('Handling item selection:', {
-        itemName: item.name,
-        portionsCount: item.portions.length,
-        portions: item.portions.map(p => p.portion)
-    });
-
+    // If there's only one portion and it has a null/undefined/empty string or 'Regular' name, add it directly.
     if (item.portions.length === 1 && (!item.portions[0].portion || item.portions[0].portion === 'Regular')) {
-        // If there's only one portion and it's either undefined or 'Regular', add it directly
-        console.log('Adding item directly:', {
-          itemName: item.name,
-          portion: item.portions[0],
-          portionName: item.portions[0].portion || 'Regular'
-        });
         onAddToOrder(item.portions[0], item.portions[0].portion || 'Regular');
     } else {
-        console.log('Opening portion selection dialog');
         setSelectedItem(item);
     }
   }
