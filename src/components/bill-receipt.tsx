@@ -20,6 +20,13 @@ interface BillReceiptProps {
 export function BillReceipt({ order, settings }: BillReceiptProps) {
     const { toast } = useToast();
     const receiptRef = useRef<HTMLDivElement>(null);
+    
+    console.log('[BillReceipt] Order:', order);
+    console.log('[BillReceipt] Settings:', settings);
+    
+    if (!order) {
+        return <div className="p-4 text-red-500">No order data available</div>;
+    }
 
     const formatDateTime = (dateString: string) => {
         if (typeof window === 'undefined') {
@@ -59,51 +66,147 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not capture receipt to share.' });
             return;
         }
-        
-        const nodeToCapture = receiptRef.current.cloneNode(true) as HTMLDivElement;
-        nodeToCapture.style.position = 'absolute';
-        nodeToCapture.style.left = '-9999px';
-        nodeToCapture.style.top = '0px';
-        nodeToCapture.style.backgroundColor = 'white';
-        document.body.appendChild(nodeToCapture);
-        
+
         try {
-            const dataUrl = await htmlToImage.toPng(nodeToCapture, { 
-                quality: 0.95,
-                backgroundColor: 'white'
-            });
-
-            document.body.removeChild(nodeToCapture);
+            console.log('[Share] Starting share process...');
             const platform = Capacitor.getPlatform();
+            console.log('[Share] Platform:', platform);
 
-            if (platform === 'web') {
-                const response = await fetch(dataUrl);
-                const blob = await response.blob();
-                const file = new File([blob], 'bill-receipt.png', { type: 'image/png' });
+            // Create a temporary div for capturing
+            const nodeToCapture = receiptRef.current.cloneNode(true) as HTMLDivElement;
+            nodeToCapture.style.position = 'absolute';
+            nodeToCapture.style.left = '-9999px';
+            nodeToCapture.style.top = '0px';
+            nodeToCapture.style.backgroundColor = 'white';
+            document.body.appendChild(nodeToCapture);
 
-                if (navigator.share) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Order Receipt',
-                        text: `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`
-                    });
-                } else {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Web Share API is not supported in this browser.' });
-                }
-            } else {
-                // For native apps (Android/iOS)
-                await Share.share({
-                    title: 'Order Receipt',
-                    text: `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`,
-                    url: dataUrl,
-                    dialogTitle: 'Share Order Receipt'
+            try {
+                console.log('[Share] Converting receipt to image...');
+                
+                // Clone styles before capturing
+                const styles = window.getComputedStyle(receiptRef.current);
+                const cssText = Object.values(styles).reduce((css, property) => {
+                    return `${css}${property}:${styles.getPropertyValue(property)};`;
+                }, '');
+                
+                // Apply computed styles directly
+                nodeToCapture.style.cssText = cssText;
+                nodeToCapture.style.width = '100%';
+                nodeToCapture.style.maxWidth = '400px';
+                nodeToCapture.style.margin = '0 auto';
+                nodeToCapture.style.backgroundColor = 'white';
+                nodeToCapture.style.color = 'black';
+                nodeToCapture.style.padding = '20px';
+                nodeToCapture.style.boxSizing = 'border-box';
+                
+                // Make sure all text elements are visible
+                const textElements = nodeToCapture.querySelectorAll('p, span, h1, h2, h3, h4, h5, h6');
+                textElements.forEach(el => {
+                    (el as HTMLElement).style.color = 'black';
                 });
+
+                const dataUrl = await htmlToImage.toPng(nodeToCapture, {
+                    quality: 1,
+                    backgroundColor: 'white',
+                    pixelRatio: 3,
+                    skipAutoScale: true,
+                    width: 400 * 3, // Fixed width with high resolution
+                    height: nodeToCapture.offsetHeight * 3,
+                    style: {
+                        backgroundColor: 'white'
+                    },
+                    filter: (node) => {
+                        if (node instanceof Element) {
+                            const computedStyle = window.getComputedStyle(node);
+                            // Only capture visible elements
+                            return computedStyle.display !== 'none' && 
+                                   computedStyle.visibility !== 'hidden' &&
+                                   computedStyle.opacity !== '0';
+                        }
+                        return true;
+                    },
+                    fontEmbedCSS: `
+                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                        * { font-family: 'Inter', sans-serif; }
+                    `
+                });
+                console.log('[Share] Image generated successfully');
+
+                if (platform === 'web') {
+                    console.log('[Share] Using Web Share API');
+                    const response = await fetch(dataUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'bill-receipt.png', { type: 'image/png' });
+
+                    if (navigator.share) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Order Receipt',
+                            text: `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`
+                        });
+                    } else {
+                        toast({ variant: 'destructive', title: 'Error', description: 'Web Share API is not supported in this browser.' });
+                    }
+                } else {
+                    console.log('[Share] Using Capacitor Share plugin');
+                    // For native apps (Android/iOS)
+                    const base64Data = dataUrl.split(',')[1];
+                    
+                    // Import required plugins
+                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                    
+                    try {
+                        // First, save the image to temporary storage
+                        console.log('[Share] Saving image to temporary storage...');
+                        const fileName = `receipt-${order.id}-${Date.now()}.png`;
+                        await Filesystem.writeFile({
+                            path: fileName,
+                            data: base64Data,
+                            directory: Directory.Cache,
+                            recursive: true
+                        });
+
+                        // Get the saved file URI
+                        console.log('[Share] Getting saved file URI...');
+                        const fileInfo = await Filesystem.getUri({
+                            path: fileName,
+                            directory: Directory.Cache
+                        });
+
+                        console.log('[Share] File URI obtained:', fileInfo.uri);
+
+                        // Share the file using its URI
+                        await Share.share({
+                            title: 'Order Receipt',
+                            text: `Order Receipt #${order.id}`,
+                            files: [fileInfo.uri],
+                            dialogTitle: 'Share Order Receipt'
+                        });
+
+                        // Clean up: delete the temporary file
+                        console.log('[Share] Cleaning up temporary file...');
+                        await Filesystem.deleteFile({
+                            path: fileName,
+                            directory: Directory.Cache
+                        });
+                    } catch (error) {
+                        console.error('[Share] Error in native sharing:', error);
+                        throw error;
+                    }
+                }
+                console.log('[Share] Share completed successfully');
+            } finally {
+                // Clean up the temporary node
+                document.body.removeChild(nodeToCapture);
             }
         } catch (error) {
-            document.body.removeChild(nodeToCapture);
-            console.error('Share failed:', error);
-            if (error instanceof Error && (error.message.includes('Share canceled') || error.message.includes('AbortError'))) {
-                return; // User cancelled the share action, do nothing.
+            console.error('[Share] Share failed:', error);
+            if (error instanceof Error) {
+                if (error.message.includes('Share canceled') || error.message.includes('AbortError')) {
+                    console.log('[Share] Share was cancelled by user');
+                    return; // User cancelled the share action, do nothing.
+                }
+                console.error('[Share] Error details:', error.message);
             }
             toast({
                 variant: 'destructive',
@@ -114,19 +217,45 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
     }
 
 
+    const dotLine = '-'.repeat(45);
+
     return (
-        <div className="space-y-4">
-            <div ref={receiptRef} className="text-sm p-4 bg-background text-black max-w-md mx-auto" style={{ color: 'black' }}>
-                <div className="text-center mb-4">
-                    <h3 className="text-lg font-bold">{settings?.restaurant_name || 'KASPA POS'}</h3>
-                    <p className="text-xs text-gray-600">Receipt</p>
+        <div style={{ margin: '0' }}>
+            <div 
+                ref={receiptRef} 
+                style={{ 
+                    backgroundColor: 'white',
+                    color: 'black',
+                    padding: '8px',
+                    width: '272px',
+                    margin: '0 auto',
+                    fontSize: '12px',
+                    position: 'relative',
+                    zIndex: 10,
+                    fontFamily: 'monospace',
+                    lineHeight: '1.2',
+                    boxSizing: 'border-box',
+                    whiteSpace: 'pre-wrap',
+                    letterSpacing: '0.5px'
+                }}>
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    <div style={{ 
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        marginBottom: '4px'
+                    }}>{settings?.restaurant_name || 'KASPA POS'}</div>
                 </div>
 
                 {settings?.qr_code_url && (
-                  <div className="flex flex-col items-center gap-2 my-4">
-                    <p className="text-sm font-medium">Scan to Pay</p>
-                    <div className="p-2 border rounded-md bg-white">
-                        <div className="relative w-32 h-32">
+                  <>
+                    <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+                        <div>Scan to Pay</div>
+                        <div style={{ 
+                          width: '100px',
+                          height: '100px',
+                          marginLeft: 'auto',
+                          position: 'relative'
+                        }}>
                             <Image 
                                 src={settings.qr_code_url} 
                                 alt="Payment QR Code" 
@@ -136,73 +265,89 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             />
                         </div>
                     </div>
-                  </div>
+                    <div>{dotLine}</div>
+                  </>
                 )}
                 
-                <div className="space-y-1">
-                    <p><strong>Order ID:</strong> {order.id}</p>
-                    <p><strong>Date:</strong> {formatDateTime(order.created_at)}</p>
-                    <p><strong>Type:</strong> <span className="capitalize">{order.order_type}</span></p>
-                     {order.order_type === 'dine-in' && <p><strong>Table:</strong> {order.table_number}</p>}
+                <div style={{ marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Date: {formatDateTime(order.created_at)}</span>
+                        {order.order_type === 'dine-in' && <span>Table: {order.table_number}</span>}
+                    </div>
+                    <div>Type: {order.order_type.toUpperCase()}</div>
                 </div>
 
                 {order.order_type === 'delivery' && (
                     <>
-                        <Separator className="my-2 bg-gray-400" />
-                        <div className="space-y-1">
-                            <h4 className="font-semibold">Delivery To:</h4>
-                            {order.phone_no && <p className="break-words">{order.phone_no}</p>}
-                            {order.flat_no && <p className="break-words">{order.flat_no}</p>}
+                        <div style={{ marginBottom: '8px' }}>
+                            <div>Delivery To:</div>
+                            {order.phone_no && <div>{order.phone_no}</div>}
+                            {order.flat_no && <div>{order.flat_no}</div>}
                             {[order.building_no, order.address].filter(Boolean).join(', ') && (
-                                <p className="break-words text-sm leading-tight">
+                                <div>
                                     {[order.building_no, order.address].filter(Boolean).join(', ')}
-                                </p>
+                                </div>
                             )}
                         </div>
+                        <div>{dotLine}</div>
                     </>
                 )}
 
                 <Separator className="my-2 bg-gray-400" />
-                <div>
+                <div style={{ marginBottom: '8px' }}>
                     {order.items.map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="flex justify-between gap-2 py-1">
-                            <div className="flex-1 min-w-0">
-                                <p className="break-words">{item.name}</p>
-                                <p className="text-xs text-gray-600">({item.quantity} x Rs.{item.rate.toFixed(2)})</p>
+                        <div key={`${item.id}-${index}`}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ flex: 1 }}>{item.name}</span>
+                                <span style={{ marginLeft: '16px' }}>Rs.{(item.quantity * item.rate).toFixed(2)}</span>
                             </div>
-                            <p className="whitespace-nowrap">Rs.{(item.quantity * item.rate).toFixed(2)}</p>
+                            <div style={{ color: '#444' }}>
+                                {item.quantity} x Rs.{item.rate.toFixed(2)}
+                            </div>
                         </div>
                     ))}
                 </div>
-                <Separator className="my-2 bg-gray-400" />
-                <div className="space-y-1">
-                    <div className="flex justify-between">
+                <div>{dotLine}</div>
+                <div style={{ marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Subtotal</span>
                         <span>Rs.{order.subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Tax</span>
                         <span>Rs.{order.tax.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-base">
-                        <span>Total</span>
+                    <div>{dotLine}</div>
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        fontWeight: 'bold'
+                    }}>
+                        <span>Total:</span>
                         <span>Rs.{order.total.toFixed(2)}</span>
                     </div>
                 </div>
-                 <Separator className="my-2 bg-gray-400" />
-                 <div className="text-center mt-4">
+                 <div>{dotLine}</div>
+                 <div style={{ textAlign: 'center', marginBottom: '8px' }}>
                     {order.payment_method ? (
-                         <p><strong>Paid via:</strong> {order.payment_method}</p>
+                        <div>Paid via: {order.payment_method}</div>
                     ) : (
-                       <div className="space-y-1 text-xs">
-                            <p className="font-bold">To be paid by Cash/UPI.</p>
-                            <p className="text-gray-600">Please share a screenshot of the payment on WhatsApp.</p>
-                        </div>
+                        <div>To be paid by Cash/UPI</div>
                     )}
-                    <p className="text-xs text-gray-600 mt-2">Thank you for your visit!</p>
+                </div>
+                <div>{dotLine}</div>
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    <div>Thank you for your visit!</div>
                 </div>
             </div>
-            <div className="pt-2 border-t flex justify-end gap-2">
+            <div 
+                style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    gap: '8px',
+                    marginTop: '8px'
+                }}
+            >
                 <Button variant="outline" size="sm" onClick={handleShare}>
                     <Share2 className="mr-2 h-4 w-4" /> Share
                 </Button>
