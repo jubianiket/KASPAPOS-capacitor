@@ -95,24 +95,63 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         try {
             const platform = Capacitor.getPlatform();
 
-            const nodeToCapture = receiptRef.current;
-            
-            // Remove buttons from capture
-            const buttons = nodeToCapture.querySelector('.receipt-actions') as HTMLElement | null;
-            if(buttons) buttons.style.display = 'none';
+            // Create a temporary wrapper for capture
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'absolute';
+            wrapper.style.left = '-9999px';
+            wrapper.style.top = '0';
+            document.body.appendChild(wrapper);
 
-            const rect = nodeToCapture.getBoundingClientRect();
+            // Clone the receipt content
+            const nodeToCapture = receiptRef.current.cloneNode(true) as HTMLElement;
             
+            // Remove the buttons container
+            const buttons = nodeToCapture.querySelector('.receipt-actions');
+            if (buttons) buttons.remove();
+
+            // Apply specific styles for capture
+            nodeToCapture.style.width = '272px';
+            nodeToCapture.style.margin = '0';
+            nodeToCapture.style.padding = '0';
+            nodeToCapture.style.backgroundColor = 'white';
+            nodeToCapture.style.color = 'black';
+            nodeToCapture.style.fontFamily = "'Inconsolata', monospace";
+            nodeToCapture.style.fontSize = '12px';
+            nodeToCapture.style.lineHeight = '1.2';
+            nodeToCapture.style.position = 'static';
+            nodeToCapture.style.boxSizing = 'border-box';
+
+            // Add cloned node to wrapper
+            wrapper.appendChild(nodeToCapture);
+
+            // Calculate actual content height
+            const contentHeight = nodeToCapture.scrollHeight;
+
             const dataUrl = await htmlToImage.toPng(nodeToCapture, {
                 quality: 1,
                 backgroundColor: 'white',
-                pixelRatio: 3, // Higher pixel ratio for better quality
-                width: rect.width,
-                height: rect.height,
-                fontEmbedCSS: `@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');`,
+                pixelRatio: 3,
+                width: 272 * 3,
+                height: contentHeight * 3,
+                style: {
+                    width: '272px',
+                    margin: '0',
+                    padding: '4px 8px',
+                    boxSizing: 'border-box'
+                },
+                filter: (node) => {
+                    // Skip any non-content elements
+                    if (node instanceof Element) {
+                        const style = window.getComputedStyle(node);
+                        return style.display !== 'none' && !node.classList.contains('receipt-actions');
+                    }
+                    return true;
+                },
+                fontEmbedCSS: `@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');`
             });
 
-            if(buttons) buttons.style.display = 'flex'; // Show buttons again
+            // Clean up
+            document.body.removeChild(wrapper);
 
             if (platform === 'web') {
                 const response = await fetch(dataUrl);
@@ -167,14 +206,25 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         }
     }
 
-    const dotLine = '-'.repeat(38);
+    const dotLine = '-'.repeat(32); // Adjusted for 72mm width
 
     return (
-        <div ref={receiptRef} style={{ fontFamily: "'Inconsolata', monospace" }} className="bg-white text-black w-[300px] p-2 mx-auto text-xs">
-            <div className="text-center mb-2">
-                <div className="text-sm font-bold mb-1">{settings?.restaurant_name || 'KASPA POS'}</div>
-                {settings?.address && <div className="text-[10px]">{settings.address}</div>}
-                {settings?.phone && <div className="text-[10px]">Ph: {settings.phone}</div>}
+        <div ref={receiptRef} style={{ 
+                fontFamily: "'Inconsolata', monospace",
+                width: '272px', // Exactly 72mm for thermal printer
+                padding: '4px 8px',
+                margin: '0 auto',
+                backgroundColor: 'white',
+                color: 'black',
+                boxSizing: 'border-box',
+                fontSize: '12px',
+                lineHeight: '1.15',
+                minHeight: 'fit-content'
+            }}>
+            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px' }}>{settings?.restaurant_name || 'KASPA POS'}</div>
+                {settings?.address && <div style={{ fontSize: '10px', marginBottom: '1px' }}>{settings.address}</div>}
+                {settings?.phone && <div style={{ fontSize: '10px' }}>Ph: {settings.phone}</div>}
             </div>
              <div className="text-center mb-2 font-bold">
                 Receipt #{order.id}
@@ -223,36 +273,55 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 </>
             )}
 
-            <div className="mb-2">
-                <div className="flex justify-between font-bold">
-                    <span>Item</span>
-                    <span>Amount</span>
+            <div style={{ marginBottom: '8px' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    fontWeight: 'bold',
+                    fontSize: '12px'
+                }}>
+                    <span style={{ flex: '1' }}>Item</span>
+                    <span style={{ width: '70px', textAlign: 'right' }}>Amount</span>
                 </div>
-                 <div>{dotLine}</div>
+                <div>{dotLine}</div>
                 {order.items.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="mt-1">
-                        <div>{item.name} {item.portion && item.portion !== 'Regular' ? `(${item.portion})` : ''}</div>
-                        <div className="flex justify-between">
-                            <span className="pl-2">{item.quantity} x Rs.{item.rate.toFixed(2)}</span>
-                            <span>Rs.{(item.quantity * item.rate).toFixed(2)}</span>
+                    <div key={`${item.id}-${index}`} style={{ marginTop: '4px' }}>
+                        <div style={{ 
+                            fontSize: '12px',
+                            width: '100%',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word'
+                        }}>{item.name} {item.portion && item.portion !== 'Regular' ? `(${item.portion})` : ''}</div>
+                        <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            fontSize: '11px'
+                        }}>
+                            <span style={{ paddingLeft: '4px' }}>{item.quantity} x Rs.{item.rate.toFixed(2)}</span>
+                            <span style={{ width: '70px', textAlign: 'right' }}>Rs.{(item.quantity * item.rate).toFixed(2)}</span>
                         </div>
                     </div>
                 ))}
             </div>
             <div>{dotLine}</div>
-            <div className="my-2 space-y-1">
-                <div className="flex justify-between">
+            <div style={{ margin: '8px 0', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Subtotal</span>
-                    <span>Rs.{order.subtotal.toFixed(2)}</span>
+                    <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Tax</span>
-                    <span>Rs.{order.tax.toFixed(2)}</span>
+                    <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.tax.toFixed(2)}</span>
                 </div>
                 <div>{dotLine}</div>
-                <div className="flex justify-between font-bold text-sm">
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                }}>
                     <span>Total:</span>
-                    <span>Rs.{order.total.toFixed(2)}</span>
+                    <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.total.toFixed(2)}</span>
                 </div>
             </div>
             <div>{dotLine}</div>
