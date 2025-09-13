@@ -105,6 +105,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 quality: 0.95,
                 backgroundColor: 'white',
                 pixelRatio: 2,
+                canvasWidth: nodeToCapture.scrollWidth,
                 fontEmbedCSS: `@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');`,
             });
 
@@ -276,3 +277,5 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
         </div>
     );
 }
+
+    
