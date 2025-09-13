@@ -1,339 +1,174 @@
 "use client";
 
-import { useRef } from 'react';
-import { Order, Restaurant } from "@/types";
-import { Button } from "./ui/button";
+import React, { useEffect, useRef, useState } from "react";
+import { useReactToPrint } from "react-to-print";
+import * as htmlToImage from "html-to-image";
+import { Button } from "@/components/ui/button";
 import { Printer, Share2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import * as htmlToImage from 'html-to-image';
-import { Share } from '@capacitor/share';
-import { Capacitor } from '@capacitor/core';
 
-interface BillReceiptProps {
+import type { Order, Restaurant, OrderItem } from '@/types';
+
+interface BillProps {
   order: Order;
   settings: Restaurant | null;
 }
 
-export function BillReceipt({ order, settings }: BillReceiptProps) {
-  const { toast } = useToast();
-  const receiptRef = useRef<HTMLDivElement>(null);
+export const BillReceipt = ({ order, settings }: { order: Order; settings: Restaurant | null }) => {
+  const componentRef = useRef<HTMLDivElement>(null);
 
-  if (!order) {
-    return <div className="p-4 text-red-500">No order data available</div>;
-  }
+  // Print
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+  });
 
-  const formatDateTime = (dateString: string) => {
-    if (typeof window === 'undefined') {
-      return new Date(dateString).toISOString();
-    }
-    const date = new Date(dateString);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-  };
+  // WhatsApp Share
+  const shareOnWhatsApp = async () => {
+    const node = document.getElementById("receipt-content");
+    if (!node) return;
 
-  const handlePrint = () => {
-    const printableContent = receiptRef.current;
-    if (printableContent) {
-      const printWindow = window.open('', '', 'height=600,width=400');
-      if (printWindow) {
-        printWindow.document.write('<html><head><title>Print Bill</title>');
-        printWindow.document.write(`
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');
-            body { 
-              font-family: 'Inconsolata', monospace; 
-              margin: 0; 
-              color: black !important;
-              width: 300px;
-            }
-            .receipt-print {
-              padding: 10px;
-              width: 100%;
-              background-color: white; 
-              color: black;
-              box-sizing: border-box;
-            }
-            .receipt-print * { 
-              color: black !important; 
-              font-family: 'Inconsolata', monospace !important;
-            }
-          </style>
-        `);
-        printWindow.document.write('</head><body>');
-        const printDiv = document.createElement('div');
-        printDiv.className = 'receipt-print';
-        printDiv.innerHTML = printableContent.innerHTML;
-        const buttons = printDiv.querySelector('.receipt-actions');
-        if (buttons) {
-          buttons.remove();
-        }
-        printWindow.document.body.appendChild(printDiv);
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.focus();
+    const clone = node.cloneNode(true) as HTMLElement;
 
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 250);
-      }
-    }
-  };
-
-  const handleShare = async () => {
-    if (!receiptRef.current) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not capture receipt to share.' });
-      return;
+    // Fix QR image
+    const qr = clone.querySelector("img[alt='QR Code']") as HTMLImageElement;
+    if (qr && settings?.qr_code_url) {
+      qr.src = settings.qr_code_url;
     }
 
-    try {
-      const platform = Capacitor.getPlatform();
+    // Wrapper
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed";
+    wrapper.style.top = "0";
+    wrapper.style.left = "0";
+    wrapper.style.visibility = "hidden";
+    wrapper.style.background = "white";
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
-      const wrapper = document.createElement('div');
-      wrapper.style.visibility = 'hidden';
-      wrapper.style.position = 'fixed';
-      wrapper.style.top = '0';
-      wrapper.style.left = '0';
-      document.body.appendChild(wrapper);
+    await new Promise((r) => setTimeout(r, 200));
 
-      const nodeToCapture = receiptRef.current.cloneNode(true) as HTMLElement;
-      const buttons = nodeToCapture.querySelector('.receipt-actions');
-      if (buttons) buttons.remove();
+    // Capture
+    const dataUrl = await htmlToImage.toPng(clone, {
+      quality: 1,
+      pixelRatio: 2,
+      backgroundColor: "white",
+      style: {
+        width: "272px",
+        fontFamily: "'Inconsolata', monospace",
+        fontSize: "14px",
+        lineHeight: "1.4",
+      },
+      filter: (node) =>
+        !(node instanceof Element && node.classList.contains("receipt-actions")),
+    });
 
-      nodeToCapture.style.width = '272px';
-      nodeToCapture.style.margin = '0';
-      nodeToCapture.style.padding = '0';
-      nodeToCapture.style.backgroundColor = 'white';
-      nodeToCapture.style.color = 'black';
-      nodeToCapture.style.fontFamily = "'Inconsolata', monospace";
-      nodeToCapture.style.fontSize = '12px';
-      nodeToCapture.style.lineHeight = '1.2';
-      nodeToCapture.style.position = 'static';
-      nodeToCapture.style.boxSizing = 'border-box';
+    document.body.removeChild(wrapper);
 
-      wrapper.appendChild(nodeToCapture);
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `receipt-${order.id}.png`, { type: "image/png" });
 
-      const dataUrl = await htmlToImage.toPng(nodeToCapture, {
-        quality: 1,
-        backgroundColor: 'white',
-        pixelRatio: 3,
-        style: {
-          width: '272px',
-          margin: '0',
-          padding: '4px 8px',
-          boxSizing: 'border-box'
-        },
-        filter: (node) => {
-          if (node instanceof Element) {
-            const style = window.getComputedStyle(node);
-            return style.display !== 'none' && !node.classList.contains('receipt-actions');
-          }
-          return true;
-        }
+    if (navigator.share) {
+      await navigator.share({
+        title: `Order Receipt #${order.id}`,
+        files: [file],
       });
-
-      document.body.removeChild(wrapper);
-
-      if (platform === 'web') {
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], 'bill-receipt.png', { type: 'image/png' });
-
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Order Receipt',
-            text: `Here is the receipt for order #${order.id}. Total: Rs.${order.total.toFixed(2)}`
-          });
-        } else {
-          toast({ variant: 'destructive', title: 'Error', description: 'Web Share API is not supported in this browser.' });
-        }
-      } else {
-        const { Filesystem, Directory } = await import('@capacitor/filesystem');
-        const fileName = `receipt-${order.id}-${Date.now()}.png`;
-
-        await Filesystem.writeFile({
-          path: fileName,
-          data: dataUrl,
-          directory: Directory.Cache,
-        });
-
-        const { uri } = await Filesystem.getUri({
-          path: fileName,
-          directory: Directory.Cache
-        });
-
-        await Share.share({
-          title: 'Order Receipt',
-          text: `Order Receipt #${order.id}`,
-          files: [uri],
-          dialogTitle: 'Share Order Receipt'
-        });
-
-        await Filesystem.deleteFile({
-          path: fileName,
-          directory: Directory.Cache
-        });
-      }
-    } catch (error) {
-      if (error instanceof Error && (error.message.includes('Share canceled') || error.name === 'AbortError')) {
-        return;
-      }
-      toast({
-        variant: 'destructive',
-        title: 'Sharing Failed',
-        description: 'Could not generate or share the receipt image. Please try again.'
-      });
+    } else {
+      const waUrl = `https://wa.me/?text=Order%20Receipt%20#${order.id}`;
+      window.open(waUrl, "_blank");
     }
   };
 
-  const dotLine = '-'.repeat(32);
+  if (!settings) return null;
 
   return (
-    <div
-      ref={receiptRef}
-      style={{
-        fontFamily: "'Inconsolata', monospace",
-        width: '272px',
-        padding: '4px 8px',
-        margin: '0 auto',
-        backgroundColor: 'white',
-        color: 'black',
-        boxSizing: 'border-box',
-        fontSize: '12px',
-        lineHeight: '1.15',
-        minHeight: 'fit-content'
-      }}
-    >
-      <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px' }}>
-          {settings?.restaurant_name || 'KASPA POS'}
-        </div>
-        {settings?.address && <div style={{ fontSize: '10px', marginBottom: '1px' }}>{settings.address}</div>}
-        {settings?.phone && <div style={{ fontSize: '10px' }}>Ph: {settings.phone}</div>}
-      </div>
-      <div className="text-center mb-2 font-bold">Receipt #{order.id}</div>
-
-      {settings?.qr_code_url && (
-        <div className="flex flex-col items-center my-2">
-          <div>Scan to Pay</div>
-          <img
-            src={settings.qr_code_url}
-            alt="Payment QR Code"
-            style={{ width: "96px", height: "96px", marginTop: "4px" }}
-          />
-        </div>
-      )}
-
-      <div className="mb-2">
-        <div>{dotLine}</div>
-        <div className="flex justify-between">
-          <span>Date: {formatDateTime(order.created_at)}</span>
-          {order.order_type === 'dine-in' && <span>Table: {order.table_number}</span>}
-        </div>
-        <div>Type: {order.order_type.toUpperCase()}</div>
-        <div>{dotLine}</div>
-      </div>
-
-      {order.order_type === 'delivery' && (
-        <div className="mb-2">
-          <div className="font-bold">Delivery To:</div>
-          {order.phone_no && <div>{order.phone_no}</div>}
-          {order.flat_no && <div>{order.flat_no}</div>}
-          {[order.building_no, order.address].filter(Boolean).join(', ') && (
-            <div>{[order.building_no, order.address].filter(Boolean).join(', ')}</div>
+    <div className="w-full max-w-sm mx-auto">
+      {/* Receipt */}
+      <div
+        id="receipt-content"
+        ref={componentRef}
+        className="bg-white p-2 text-[14px] font-mono"
+        style={{ width: "272px" }}
+      >
+        {/* Header */}
+        <div className="text-center mb-2">
+          <h2 className="font-bold text-[16px]">{settings?.restaurant_name}</h2>
+          <p>Receipt #{order.id}</p>
+          <p className="mt-1">Scan to Pay</p>
+          {settings?.qr_code_url && (
+            <img
+              src={settings.qr_code_url}
+              alt="QR Code"
+              className="mx-auto my-2"
+              style={{ width: "120px", height: "120px" }}
+            />
           )}
-          <div>{dotLine}</div>
         </div>
-      )}
 
-      <div style={{ marginBottom: '8px' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontWeight: 'bold',
-            fontSize: '12px'
-          }}
-        >
-          <span style={{ flex: '1' }}>Item</span>
-          <span style={{ width: '70px', textAlign: 'right' }}>Amount</span>
-        </div>
-        <div>{dotLine}</div>
-        {order.items.map((item, index) => (
-          <div key={`${item.id}-${index}`} style={{ marginTop: '4px' }}>
-            <div
-              style={{
-                fontSize: '12px',
-                width: '100%',
-                whiteSpace: 'normal',
-                wordBreak: 'break-word'
-              }}
-            >
-              {item.name} {item.portion && item.portion !== 'Regular' ? `(${item.portion})` : ''}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '11px'
-              }}
-            >
-              <span style={{ paddingLeft: '4px' }}>
-                {item.quantity} x Rs.{item.rate.toFixed(2)}
+        <p>--------------------------------</p>
+        <p>
+          Date: {new Date().toLocaleString()}{" "}
+          {order.table_number && `Table: ${order.table_number}`}
+        </p>
+        <p>Type: {order.order_type.toUpperCase()}</p>
+        <p>--------------------------------</p>
+
+        {/* Items */}
+        <p className="font-bold">Item            Amount</p>
+        <p>--------------------------------</p>
+        {order.items.map((item) => (
+          <div key={item.id}>
+            <p>{item.name}</p>
+            <p>
+              {item.quantity} x Rs.{item.rate.toFixed(2)}{" "}
+              <span className="float-right">
+                Rs.{(item.rate * item.quantity).toFixed(2)}
               </span>
-              <span style={{ width: '70px', textAlign: 'right' }}>
-                Rs.{(item.quantity * item.rate).toFixed(2)}
-              </span>
-            </div>
+            </p>
           </div>
         ))}
-      </div>
 
-      <div>{dotLine}</div>
-      <div style={{ margin: '8px 0', fontSize: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Subtotal</span>
-          <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.subtotal.toFixed(2)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Tax</span>
-          <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.tax.toFixed(2)}</span>
-        </div>
-        <div>{dotLine}</div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontWeight: 'bold',
-            fontSize: '13px'
-          }}
-        >
-          <span>Total:</span>
-          <span style={{ width: '70px', textAlign: 'right' }}>Rs.{order.total.toFixed(2)}</span>
-        </div>
-      </div>
-      <div>{dotLine}</div>
-      <div className="text-center my-2">
-        {order.payment_method ? (
-          <div>Paid via: {order.payment_method}</div>
-        ) : (
-          <div>Payment Pending</div>
-        )}
-      </div>
-      <div>{dotLine}</div>
-      <div className="text-center mt-2">
-        <div>Thank you for your visit!</div>
+        <p>--------------------------------</p>
+
+        {/* Totals */}
+        <p>
+          Subtotal{" "}
+          <span className="float-right">Rs.{order.subtotal.toFixed(2)}</span>
+        </p>
+        <p>
+          Tax <span className="float-right">Rs.{order.tax.toFixed(2)}</span>
+        </p>
+        <p>--------------------------------</p>
+        <p className="font-bold">
+          Total: <span className="float-right">Rs.{order.total.toFixed(2)}</span>
+        </p>
+        <p>--------------------------------</p>
+
+        {/* Payment */}
+        <p className="text-center">
+          Paid via: {order.payment_method || "Cash"}
+        </p>
+
+        <p>--------------------------------</p>
+
+        {/* Footer */}
+        <p className="text-center">{settings?.address}</p>
+        <p className="text-center">Thank you for your visit!</p>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-center gap-2 mt-4 receipt-actions">
-        <Button variant="outline" size="sm" onClick={handleShare}>
-          <Share2 className="mr-2 h-4 w-4" /> Share
+      <div className="receipt-actions flex justify-between mt-4">
+        <Button onClick={handlePrint} size="sm" className="flex items-center gap-1">
+          <Printer size={16} /> Print
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" /> Print
+        <Button
+          onClick={shareOnWhatsApp}
+          size="sm"
+          className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
+        >
+          <Share2 size={16} /> WhatsApp
         </Button>
       </div>
     </div>
   );
-}
+};
+
+
