@@ -46,7 +46,7 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                             font-family: 'Inconsolata', monospace; 
                             margin: 0; 
                             color: black !important;
-                            width: 300px;
+                            width: 272px;
                         }
                         .receipt-print {
                             padding: 10px;
@@ -112,15 +112,16 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             // Apply specific styles for capture
             nodeToCapture.style.width = '272px';
             nodeToCapture.style.margin = '0';
-            nodeToCapture.style.padding = '0';
+            nodeToCapture.style.padding = '4px 8px';
             nodeToCapture.style.backgroundColor = 'white';
             nodeToCapture.style.color = 'black';
             nodeToCapture.style.fontFamily = "'Inconsolata', monospace";
             nodeToCapture.style.fontSize = '12px';
-            nodeToCapture.style.lineHeight = '1.2';
+            nodeToCapture.style.lineHeight = '1.15';
             nodeToCapture.style.position = 'static';
             nodeToCapture.style.boxSizing = 'border-box';
-
+            nodeToCapture.style.minHeight = 'fit-content';
+            
             // Add cloned node to wrapper
             wrapper.appendChild(nodeToCapture);
 
@@ -131,10 +132,9 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
                 quality: 1,
                 backgroundColor: 'white',
                 pixelRatio: 3,
-                width: 272 * 3,
-                height: contentHeight * 3,
                 style: {
                     width: '272px',
+                    height: `${contentHeight}px`,
                     margin: '0',
                     padding: '4px 8px',
                     boxSizing: 'border-box'
