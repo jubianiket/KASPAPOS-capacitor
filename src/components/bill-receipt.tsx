@@ -1,174 +1,176 @@
+
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import * as htmlToImage from "html-to-image";
 import { Button } from "@/components/ui/button";
 import { Printer, Share2 } from "lucide-react";
+import { Share } from '@capacitor/share';
+import { Capacitor } from "@capacitor/core";
+import { useToast } from "@/hooks/use-toast";
 
-import type { Order, Restaurant, OrderItem } from '@/types';
+import type { Order, Restaurant } from '@/types';
 
-interface BillProps {
+interface BillReceiptProps {
   order: Order;
   settings: Restaurant | null;
 }
 
-export const BillReceipt = ({ order, settings }: { order: Order; settings: Restaurant | null }) => {
-  const componentRef = useRef<HTMLDivElement>(null);
+export const BillReceipt = ({ order, settings }: BillReceiptProps) => {
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  // Print
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    content: () => receiptRef.current,
+    documentTitle: `Receipt-Order-${order.id}`,
+    removeAfterPrint: true,
   });
 
-  // WhatsApp Share
-  const shareOnWhatsApp = async () => {
-    const node = document.getElementById("receipt-content");
-    if (!node) return;
-
-    const clone = node.cloneNode(true) as HTMLElement;
-
-    // Fix QR image
-    const qr = clone.querySelector("img[alt='QR Code']") as HTMLImageElement;
-    if (qr && settings?.qr_code_url) {
-      qr.src = settings.qr_code_url;
+  const generateReceiptImage = async (): Promise<string | null> => {
+    const node = receiptRef.current;
+    if (!node) {
+      toast({ variant: 'destructive', title: "Error", description: "Receipt element not found." });
+      return null;
     }
 
-    // Wrapper
-    const wrapper = document.createElement("div");
-    wrapper.style.position = "fixed";
-    wrapper.style.top = "0";
-    wrapper.style.left = "0";
-    wrapper.style.visibility = "hidden";
-    wrapper.style.background = "white";
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    try {
+      const dataUrl = await htmlToImage.toPng(node, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        style: {
+          width: `${node.offsetWidth}px`,
+          height: `${node.offsetHeight}px`,
+        }
+      });
+      return dataUrl;
+    } catch (error) {
+      console.error("Error generating image:", error);
+      toast({ variant: 'destructive', title: "Image Generation Failed", description: "Could not create receipt image." });
+      return null;
+    }
+  };
 
-    await new Promise((r) => setTimeout(r, 200));
+  const handleShare = async () => {
+    const dataUrl = await generateReceiptImage();
+    if (!dataUrl) return;
 
-    // Capture
-    const dataUrl = await htmlToImage.toPng(clone, {
-      quality: 1,
-      pixelRatio: 2,
-      backgroundColor: "white",
-      style: {
-        width: "272px",
-        fontFamily: "'Inconsolata', monospace",
-        fontSize: "14px",
-        lineHeight: "1.4",
-      },
-      filter: (node) =>
-        !(node instanceof Element && node.classList.contains("receipt-actions")),
-    });
-
-    document.body.removeChild(wrapper);
-
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], `receipt-${order.id}.png`, { type: "image/png" });
-
-    if (navigator.share) {
-      await navigator.share({
+    if (Capacitor.isPluginAvailable('Share') && (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios')) {
+      await Share.share({
         title: `Order Receipt #${order.id}`,
-        files: [file],
+        text: `Here is the receipt for order #${order.id}`,
+        url: dataUrl,
       });
     } else {
-      const waUrl = `https://wa.me/?text=Order%20Receipt%20#${order.id}`;
-      window.open(waUrl, "_blank");
+      // Fallback for web
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], `receipt-${order.id}.png`, { type: "image/png" });
+
+        if (navigator.share) {
+          await navigator.share({
+            title: `Order Receipt #${order.id}`,
+            files: [file],
+          });
+        } else {
+          toast({ variant: 'destructive', title: "Unsupported", description: "Web Share API is not supported in your browser." });
+        }
+      } catch (error) {
+        console.error("Web share error:", error);
+        toast({ variant: 'destructive', title: "Sharing Failed", description: "Could not share the receipt." });
+      }
     }
   };
 
   if (!settings) return null;
 
   return (
-    <div className="w-full max-w-sm mx-auto">
-      {/* Receipt */}
-      <div
-        id="receipt-content"
-        ref={componentRef}
-        className="bg-white p-2 text-[14px] font-mono"
-        style={{ width: "272px" }}
-      >
-        {/* Header */}
+    <div className="w-full max-w-sm mx-auto font-mono">
+      {/* Receipt Content */}
+      <div id={`receipt-${order.id}`} ref={receiptRef} className="bg-white p-2 text-black" style={{ width: "272px" }}>
         <div className="text-center mb-2">
-          <h2 className="font-bold text-[16px]">{settings?.restaurant_name}</h2>
-          <p>Receipt #{order.id}</p>
-          <p className="mt-1">Scan to Pay</p>
-          {settings?.qr_code_url && (
-            <img
-              src={settings.qr_code_url}
-              alt="QR Code"
-              className="mx-auto my-2"
-              style={{ width: "120px", height: "120px" }}
-            />
-          )}
+          <h2 className="font-bold text-[16px]">{settings.restaurant_name}</h2>
+          <p className="text-[14px]">Order #{order.id}</p>
+          <p className="text-[12px] mt-1">
+            {new Date(order.created_at).toLocaleString()}
+          </p>
+          <p className="text-[12px]">
+            {order.order_type === 'dine-in' && order.table_number ? `Table: ${order.table_number}` : `Type: ${order.order_type}`}
+          </p>
         </div>
 
         <p>--------------------------------</p>
-        <p>
-          Date: {new Date().toLocaleString()}{" "}
-          {order.table_number && `Table: ${order.table_number}`}
-        </p>
-        <p>Type: {order.order_type.toUpperCase()}</p>
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr>
+              <th className="text-left">Item</th>
+              <th className="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.items.map((item, index) => (
+              <tr key={index}>
+                <td className="align-top">
+                  {item.name}
+                  <br />
+                  <span className="pl-2">{item.quantity} x {item.rate.toFixed(2)}</span>
+                </td>
+                <td className="text-right align-top">
+                  {(item.rate * item.quantity).toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <p>--------------------------------</p>
 
-        {/* Items */}
-        <p className="font-bold">Item            Amount</p>
+        <div className="text-[13px] space-y-1">
+          <p className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{order.subtotal.toFixed(2)}</span>
+          </p>
+          <p className="flex justify-between">
+            <span>Tax</span>
+            <span>{order.tax.toFixed(2)}</span>
+          </p>
+        </div>
         <p>--------------------------------</p>
-        {order.items.map((item) => (
-          <div key={item.id}>
-            <p>{item.name}</p>
-            <p>
-              {item.quantity} x Rs.{item.rate.toFixed(2)}{" "}
-              <span className="float-right">
-                Rs.{(item.rate * item.quantity).toFixed(2)}
-              </span>
-            </p>
+        <p className="flex justify-between font-bold text-[15px]">
+          <span>Total:</span>
+          <span>Rs.{order.total.toFixed(2)}</span>
+        </p>
+        <p>--------------------------------</p>
+
+        <p className="text-center text-[13px] font-semibold">
+          Paid via: {order.payment_method || "N/A"}
+        </p>
+        
+        {settings.qr_code_url && (
+          <div className="text-center mt-2">
+              <p className="text-[12px] font-bold">Scan to Pay Next Time</p>
+              <img
+                src={settings.qr_code_url}
+                alt="QR Code"
+                className="mx-auto my-1"
+                style={{ width: "80px", height: "80px" }}
+              />
           </div>
-        ))}
+        )}
 
-        <p>--------------------------------</p>
-
-        {/* Totals */}
-        <p>
-          Subtotal{" "}
-          <span className="float-right">Rs.{order.subtotal.toFixed(2)}</span>
-        </p>
-        <p>
-          Tax <span className="float-right">Rs.{order.tax.toFixed(2)}</span>
-        </p>
-        <p>--------------------------------</p>
-        <p className="font-bold">
-          Total: <span className="float-right">Rs.{order.total.toFixed(2)}</span>
-        </p>
-        <p>--------------------------------</p>
-
-        {/* Payment */}
-        <p className="text-center">
-          Paid via: {order.payment_method || "Cash"}
-        </p>
-
-        <p>--------------------------------</p>
-
-        {/* Footer */}
-        <p className="text-center">{settings?.address}</p>
-        <p className="text-center">Thank you for your visit!</p>
+        <p className="text-center text-[12px] mt-2">Thank you for your visit!</p>
+        {settings.address && <p className="text-center text-[12px]">{settings.address}</p>}
       </div>
 
-      {/* Actions */}
-      <div className="receipt-actions flex justify-between mt-4">
-        <Button onClick={handlePrint} size="sm" className="flex items-center gap-1">
+      {/* Action Buttons */}
+      <div className="flex justify-between mt-4">
+        <Button onClick={handlePrint} size="sm" variant="outline" className="flex-1 flex items-center gap-1">
           <Printer size={16} /> Print
         </Button>
-        <Button
-          onClick={shareOnWhatsApp}
-          size="sm"
-          className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
-        >
-          <Share2 size={16} /> WhatsApp
+        <Button onClick={handleShare} size="sm" className="flex-1 flex items-center gap-1 bg-green-500 hover:bg-green-600">
+          <Share2 size={16} /> Share
         </Button>
       </div>
     </div>
   );
 };
-
-

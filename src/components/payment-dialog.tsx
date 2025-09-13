@@ -144,7 +144,7 @@ export default function PaymentDialog({
                     <DialogDescription>The order has been completed. You can print the bill or start a new order.</DialogDescription>
                 </DialogHeader>
                  <ScrollArea className="max-h-[70vh] p-1">
-                    <BillReceipt bill={completedOrder} />
+                    <BillReceipt order={completedOrder} settings={settings} />
                  </ScrollArea>
                 <DialogFooter className="sm:justify-between gap-2">
                     <Button onClick={handleDialogCloseAndNewOrder} variant="secondary">
