@@ -101,11 +101,14 @@ export function BillReceipt({ order, settings }: BillReceiptProps) {
             const buttons = nodeToCapture.querySelector('.receipt-actions') as HTMLElement | null;
             if(buttons) buttons.style.display = 'none';
 
+            const rect = nodeToCapture.getBoundingClientRect();
+            
             const dataUrl = await htmlToImage.toPng(nodeToCapture, {
-                quality: 0.95,
+                quality: 1,
                 backgroundColor: 'white',
-                pixelRatio: 2,
-                canvasWidth: nodeToCapture.scrollWidth,
+                pixelRatio: 3, // Higher pixel ratio for better quality
+                width: rect.width,
+                height: rect.height,
                 fontEmbedCSS: `@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');`,
             });
 
