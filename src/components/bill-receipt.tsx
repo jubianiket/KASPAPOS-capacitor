@@ -3,13 +3,13 @@
 
 import React, { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import * as htmlToImage from "html-to-image";
 import { Button } from "@/components/ui/button";
 import { Printer, Share2 } from "lucide-react";
 import { Share } from '@capacitor/share';
-import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import * as htmlToImage from 'html-to-image';
+import { Capacitor } from '@capacitor/core';
 import { useToast } from "@/hooks/use-toast";
-
 import type { Order, Restaurant } from '@/types';
 
 interface BillReceiptProps {
@@ -22,64 +22,134 @@ export const BillReceipt = ({ order, settings }: BillReceiptProps) => {
   const { toast } = useToast();
 
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
     documentTitle: `Receipt-Order-${order.id}`,
-    removeAfterPrint: true,
+    content: () => receiptRef.current,
+    pageStyle: `
+      @page {
+        size: auto;   /* Use auto to let printer determine size */
+        margin: 0mm;  /* Remove margins */
+      }
+      @media print {
+        html, body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          min-width: 58mm;  /* Support for 58mm printers */
+          max-width: 80mm;  /* Support for 80mm printers */
+        }
+        /* Ensure content fits within printer width */
+        table, tr, td, th, p, div {
+          width: auto !important;
+          max-width: 100% !important;
+          font-size: 10pt !important;
+          word-break: break-word;
+        }
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `,
+    onBeforeGetContent: () => {
+      toast({ title: "Preparing to print..." });
+      return Promise.resolve();
+    },
+    onPrintError: (error) => {
+      console.error('Print error:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: "Print Failed", 
+        description: "Could not print the receipt. Please check your printer connection." 
+      });
+    },
+    onAfterPrint: () => {
+      toast({ 
+        title: "Print Completed", 
+        description: "The receipt has been sent to the printer." 
+      });
+    }
   });
 
-  const generateReceiptImage = async (): Promise<string | null> => {
-    const node = receiptRef.current;
-    if (!node) {
-      toast({ variant: 'destructive', title: "Error", description: "Receipt element not found." });
-      return null;
-    }
-
+  const handleShare = async () => {
+    if (!receiptRef.current) return;
+    
     try {
-      const dataUrl = await htmlToImage.toPng(node, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
+      // Show loading toast
+      toast({ title: "Preparing receipt for sharing..." });
+
+      // Convert receipt to image with platform-specific settings
+      const platform = Capacitor.getPlatform();
+      const dataUrl = await htmlToImage.toPng(receiptRef.current, {
+        quality: 1.0,
+        pixelRatio: platform === 'ios' ? 3 : 2, // Higher resolution for iOS
+        backgroundColor: 'white',
         style: {
-          width: `${node.offsetWidth}px`,
-          height: `${node.offsetHeight}px`,
+          // Ensure proper rendering on both platforms
+          transform: 'none',
+          overflow: 'hidden',
+          borderRadius: '0px'
         }
       });
-      return dataUrl;
-    } catch (error) {
-      console.error("Error generating image:", error);
-      toast({ variant: 'destructive', title: "Image Generation Failed", description: "Could not create receipt image." });
-      return null;
-    }
-  };
 
-  const handleShare = async () => {
-    const dataUrl = await generateReceiptImage();
-    if (!dataUrl) return;
+      // Generate unique filename with timestamp
+      const timestamp = new Date().getTime();
+      const fileName = `receipt-${order.id}-${timestamp}.png`;
+      const base64Data = dataUrl.split(',')[1];
+      
+      try {
+        // Clean up any existing files with similar names
+        const existingFiles = await Filesystem.readdir({
+          path: '',
+          directory: Directory.Cache
+        });
+        
+        for (const file of existingFiles.files) {
+          if (file.name.startsWith(`receipt-${order.id}`)) {
+            await Filesystem.deleteFile({
+              path: file.name,
+              directory: Directory.Cache
+            });
+          }
+        }
+      } catch (e) {
+        // Directory might not exist yet, which is fine
+        console.log('No existing files to clean up');
+      }
 
-    if (Capacitor.isPluginAvailable('Share') && (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios')) {
+      // Save image to filesystem
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      // Share the saved image
       await Share.share({
         title: `Order Receipt #${order.id}`,
-        text: `Here is the receipt for order #${order.id}`,
-        url: dataUrl,
+        files: [savedFile.uri],
+        dialogTitle: 'Share Receipt',
+        text: platform === 'ios' ? undefined : `Receipt for Order #${order.id}` // Add text for Android
       });
-    } else {
-      // Fallback for web
-      try {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `receipt-${order.id}.png`, { type: "image/png" });
 
-        if (navigator.share) {
-          await navigator.share({
-            title: `Order Receipt #${order.id}`,
-            files: [file],
+      // Clean up after sharing
+      setTimeout(async () => {
+        try {
+          await Filesystem.deleteFile({
+            path: fileName,
+            directory: Directory.Cache
           });
-        } else {
-          toast({ variant: 'destructive', title: "Unsupported", description: "Web Share API is not supported in your browser." });
+        } catch (e) {
+          console.log('Cleanup error:', e);
         }
-      } catch (error) {
-        console.error("Web share error:", error);
-        toast({ variant: 'destructive', title: "Sharing Failed", description: "Could not share the receipt." });
-      }
+      }, 1000); // Give some time for the share operation to complete
+
+    } catch (error) {
+      console.error("Share error:", error);
+      toast({ 
+        variant: 'destructive', 
+        title: "Sharing Failed", 
+        description: "Could not share the receipt. Please try again." 
+      });
     }
   };
 
@@ -148,7 +218,7 @@ export const BillReceipt = ({ order, settings }: BillReceiptProps) => {
         
         {settings.qr_code_url && (
           <div className="text-center mt-2">
-              <p className="text-[12px] font-bold">Scan to Pay Next Time</p>
+              <p className="text-[12px] font-bold">Scan to Pay </p>
               <img
                 src={settings.qr_code_url}
                 alt="QR Code"
