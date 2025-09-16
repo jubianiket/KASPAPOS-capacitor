@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import type { KitchenOrder, User } from '@/types';
 import { getKitchenOrders, updateKitchenOrderStatus, supabase, getSettings } from '@/lib/supabase';
 import KdsOrderCard from '@/components/kds-order-card';
@@ -79,7 +79,7 @@ export default function KDSPage() {
     fetchInitialDataAndSubscribe();
 
     const channel = supabase
-      .channel('kitchen-orders-realtime')
+      .channel('kitchen-orders-realtime-kds-page')
       .on(
         'postgres_changes',
         { 
