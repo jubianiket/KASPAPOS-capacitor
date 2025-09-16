@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -170,7 +171,7 @@ export default function Home() {
       }
       const savedMainOrder = await updateAndSaveOrder(confirmedOrderData);
       
-      if (savedMainOrder) {
+      if (savedMainOrder && settings?.kds_enabled) {
           const kitchenOrder = await createKitchenOrder(savedMainOrder);
           if (kitchenOrder) {
               toast({
@@ -184,6 +185,11 @@ export default function Home() {
                   description: 'The order was confirmed but could not be sent to the kitchen. Please check system status.',
               });
           }
+      } else if (savedMainOrder) {
+        toast({
+            title: 'Order Confirmed',
+            description: 'The order has been confirmed successfully.',
+        });
       }
     }
   }
