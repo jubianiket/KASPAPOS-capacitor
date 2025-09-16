@@ -389,6 +389,14 @@ export default function Home() {
       return null;
     }
   };
+
+  const handleUpdateStatus = async (status: Order['status']) => {
+    if (!activeOrder) return;
+    await updateAndSaveOrder({ ...activeOrder, status });
+    toast({
+        title: `Order status updated to ${status.replace('-', ' ')}`,
+    });
+  }
   
   const handleOrderTypeChange = (value: 'Dine In' | 'Delivery') => {
       if(value) {
@@ -567,6 +575,7 @@ export default function Home() {
             onClearOrder={clearOrder}
             onCompleteOrder={completeOrderAndPay}
             onConfirmOrder={() => confirmOrder()}
+            onUpdateStatus={handleUpdateStatus}
             onNewOrder={handleNewOrder}
           />
         </div>

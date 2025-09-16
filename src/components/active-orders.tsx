@@ -35,6 +35,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
         {orders.map((order) => {
           const isSelected = activeOrderId === order.id;
           const isReady = order.status === 'ready';
+          const isOutForDelivery = order.status === 'out-for-delivery';
 
           return (
             <Card
@@ -46,13 +47,15 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
                   ? "bg-primary text-primary-foreground shadow-lg ring-2 ring-primary ring-offset-2"
                   : isReady
                   ? "bg-amber-500/20 border-amber-500 text-amber-700"
+                  : isOutForDelivery
+                  ? "bg-blue-500/20 border-blue-500 text-blue-700"
                   : "hover:bg-muted/50"
               )}
             >
-              {isReady && (
+              {(isReady || isOutForDelivery) && (
                  <span className="absolute -top-2 -right-2 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
+                    <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", isReady && "bg-amber-400", isOutForDelivery && "bg-blue-400")}></span>
+                    <span className={cn("relative inline-flex rounded-full h-4 w-4", isReady && "bg-amber-500", isOutForDelivery && "bg-blue-500")}></span>
                 </span>
               )}
               <CardContent className="p-3 flex flex-col justify-between h-full">
@@ -91,7 +94,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
                            Rs.{order.total.toFixed(2)}
                         </div>
                     </div>
-                     {order.status && <Badge variant={isReady ? 'destructive' : 'secondary'} className="capitalize mt-2">{order.status}</Badge>}
+                     {order.status && <Badge variant={isReady ? 'destructive' : 'secondary'} className="capitalize mt-2">{order.status.replace('-', ' ')}</Badge>}
                  </div>
               </CardContent>
             </Card>

@@ -22,6 +22,7 @@ interface BillProps {
   onCompleteOrder: (order: Order) => Promise<Order | null | undefined>;
   onConfirmOrder: () => void;
   onNewOrder: () => void;
+  onUpdateStatus: (status: Order['status']) => void;
   onAddToOrder?: (item: MenuItem) => void; // Made optional as it seems unused here
 }
 
@@ -33,7 +34,8 @@ export default function Bill({
   onClearOrder,
   onCompleteOrder,
   onConfirmOrder,
-  onNewOrder
+  onNewOrder,
+  onUpdateStatus
 }: BillProps) {
   
   const orderItems = order?.items ?? [];
@@ -100,8 +102,8 @@ export default function Bill({
   const isPaymentDisabled = () => {
     if (!order) return true;
     if (order.payment_status === 'paid') return true;
-    // Allow payment for 'received' or 'ready' orders
-    if (order.status !== 'received' && order.status !== 'ready') return true;
+    // Allow payment for 'received', 'ready', or 'out-for-delivery' orders
+    if (order.status !== 'received' && order.status !== 'ready' && order.status !== 'out-for-delivery') return true;
     return order.items.length === 0;
   }
   
@@ -131,8 +133,8 @@ export default function Bill({
                 </Button>
             );
         case 'received':
-        case 'ready':
-            if (order.order_type === 'delivery') {
+        case 'out-for-delivery':
+             if (order.order_type === 'delivery') {
                 return (
                     <div className="flex flex-col gap-2 w-full">
                         <BillShareDialog order={order} settings={settings}>
@@ -140,6 +142,42 @@ export default function Bill({
                                 <Share2 className="mr-2 h-4 w-4"/> Generate & Share Bill
                             </Button>
                         </BillShareDialog>
+                        <PaymentDialog 
+                            order={order} 
+                            total={total} 
+                            onCompleteOrder={handleCompleteOrder} 
+                            disabled={isPaymentDisabled()}
+                            onNewOrder={onNewOrder}
+                            settings={settings}
+                        >
+                            <Button className="w-full" disabled={isPaymentDisabled()}>
+                                <CheckCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                            </Button>
+                        </PaymentDialog>
+                    </div>
+                )
+            }
+             return (
+                 <PaymentDialog 
+                    order={order} 
+                    total={total} 
+                    onCompleteOrder={handleCompleteOrder} 
+                    disabled={isPaymentDisabled()}
+                    onNewOrder={onNewOrder}
+                    settings={settings}
+                >
+                    <Button className="w-full text-lg py-6" disabled={isPaymentDisabled()}>
+                    Proceed to Payment
+                    </Button>
+                </PaymentDialog>
+            );
+        case 'ready':
+             if (order.order_type === 'delivery') {
+                return (
+                    <div className="flex flex-col gap-2 w-full">
+                        <Button className="w-full" variant="secondary" onClick={() => onUpdateStatus('out-for-delivery')}>
+                           <Send className="mr-2 h-4 w-4" /> Out for Delivery
+                        </Button>
                         <PaymentDialog 
                             order={order} 
                             total={total} 
@@ -180,16 +218,19 @@ export default function Bill({
           case 'pending': return 'outline';
           case 'received': return 'secondary';
           case 'ready': return 'default';
+          case 'out-for-delivery': return 'default';
           case 'completed': return 'default';
           default: return 'outline';
       }
   }
   
    const getStatusBadgeClass = () => {
-      if (order?.status === 'ready') {
-          return "bg-amber-500 text-white";
+      if (!order) return "";
+      switch(order.status) {
+          case 'ready': return "bg-amber-500 text-white";
+          case 'out-for-delivery': return "bg-blue-500 text-white";
+          default: return "";
       }
-      return "";
   }
 
 
@@ -215,7 +256,7 @@ export default function Bill({
                     <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                     </>
                 )}
-                 {order.status && <Badge variant={getStatusBadgeVariant()} className={cn("capitalize", getStatusBadgeClass())}>{order.status}</Badge>}
+                 {order.status && <Badge variant={getStatusBadgeVariant()} className={cn("capitalize", getStatusBadgeClass())}>{order.status.replace('-', ' ')}</Badge>}
             </div>
         )}
       </CardHeader>
