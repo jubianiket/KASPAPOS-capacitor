@@ -136,7 +136,7 @@ export const getActiveOrders = async (restaurantId: number): Promise<Order[]> =>
         .from('orders')
         .select('*')
         .eq('restaurant_id', restaurantId)
-        .neq('payment_status', 'paid') 
+        .neq('status', 'completed')
         .order('date', { ascending: false });
 
     if (error) {
@@ -151,7 +151,7 @@ export const getCompletedOrders = async (restaurantId: number): Promise<Order[]>
         .from('orders')
         .select('*')
         .eq('restaurant_id', restaurantId)
-        .eq('payment_status', 'paid') 
+        .eq('status', 'completed') 
         .order('date', { ascending: false }); 
     
     if (error) {
@@ -260,16 +260,32 @@ export const getKitchenOrders = async (restaurantId: number): Promise<KitchenOrd
     return data as KitchenOrder[];
 }
 
-export const updateKitchenOrderStatus = async (orderId: number, restaurantId: number, status: 'preparing' | 'ready'): Promise<boolean> => {
-    const { error } = await supabase
+export const updateKitchenOrderStatus = async (kdsOrderId: number, mainOrderId: number, restaurantId: number, status: 'preparing' | 'ready'): Promise<boolean> => {
+    const { error: kdsError } = await supabase
         .from('kitchen_orders')
         .update({ status: status })
-        .match({ id: orderId, restaurant_id: restaurantId });
+        .match({ id: kdsOrderId, restaurant_id: restaurantId });
 
-    if (error) {
-        console.error("Error updating kitchen order status:", error);
+    if (kdsError) {
+        console.error("Error updating kitchen order status:", kdsError);
         return false;
     }
+
+    // Also update the main order status if the new status is 'ready'
+    if (status === 'ready') {
+        const { error: mainOrderError } = await supabase
+            .from('orders')
+            .update({ status: 'ready' })
+            .match({ id: mainOrderId, restaurant_id: restaurantId });
+        
+        if (mainOrderError) {
+            console.error("Error updating main order status:", mainOrderError);
+            // KDS status was updated, but main order wasn't. This is a partial success.
+            // Depending on requirements, you might want to handle this differently.
+            return false;
+        }
+    }
+    
     return true;
 };
 

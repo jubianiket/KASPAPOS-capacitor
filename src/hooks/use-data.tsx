@@ -90,38 +90,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchAllData();
 
-    // Set up real-time subscription for orders
-    if (user?.restaurant_id) {
-      // Set up real-time channel
-      const channel = supabase.channel('orders-channel')
+    if (!user?.restaurant_id) return;
+    
+    const ordersChannel = supabase.channel('orders-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${user.restaurant_id}` },
+        (payload) => {
+          console.log('[Supabase] Order change received:', payload);
+          fetchAllData();
+        }
+      )
+      .subscribe();
+      
+    const menuItemsChannel = supabase.channel('menu-items-channel')
         .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'orders',
-            filter: `restaurant_id=eq.${user.restaurant_id}`
-          },
-          (payload) => {
-            console.log('[Supabase] Order change received:', payload);
-            // Refresh all data when any order changes
-            fetchAllData();
-          }
-        )
-        .subscribe();
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'menu_items', filter: `restaurant_id=eq.${user.restaurant_id}` },
+            (payload) => {
+                console.log('[Supabase] Menu item change received:', payload);
+                fetchAllData();
+            }
+        ).subscribe();
 
-      // Set up periodic polling as backup
-      const pollInterval = setInterval(() => {
-        console.log('[DataProvider] Polling for updates...');
-        fetchAllData();
-      }, 30000); // Poll every 30 seconds
-
-      // Cleanup function
-      return () => {
-        channel.unsubscribe();
-        clearInterval(pollInterval);
-      };
-    }
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(menuItemsChannel);
+    };
+    
   }, [fetchAllData, user?.restaurant_id]);
 
   const value = {

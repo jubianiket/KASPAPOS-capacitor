@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PaymentDialog from './payment-dialog';
 import { Badge } from './ui/badge';
 import BillShareDialog from './bill-share-dialog';
+import { cn } from '@/lib/utils';
 
 interface BillProps {
   order: Order | null;
@@ -99,7 +100,8 @@ export default function Bill({
   const isPaymentDisabled = () => {
     if (!order) return true;
     if (order.payment_status === 'paid') return true;
-    if (order.status !== 'received') return true;
+    // Allow payment for 'received' or 'ready' orders
+    if (order.status !== 'received' && order.status !== 'ready') return true;
     return order.items.length === 0;
   }
   
@@ -129,6 +131,7 @@ export default function Bill({
                 </Button>
             );
         case 'received':
+        case 'ready':
             if (order.order_type === 'delivery') {
                 return (
                     <div className="flex flex-col gap-2 w-full">
@@ -171,6 +174,24 @@ export default function Bill({
     }
   }
 
+  const getStatusBadgeVariant = () => {
+      if (!order) return 'outline';
+      switch(order.status) {
+          case 'pending': return 'outline';
+          case 'received': return 'secondary';
+          case 'ready': return 'default';
+          case 'completed': return 'default';
+          default: return 'outline';
+      }
+  }
+  
+   const getStatusBadgeClass = () => {
+      if (order?.status === 'ready') {
+          return "bg-amber-500 text-white";
+      }
+      return "";
+  }
+
 
   return (
     <Card className="sticky top-24">
@@ -194,7 +215,7 @@ export default function Bill({
                     <span>Table: <span className="font-semibold text-foreground">{order.table_number}</span></span>
                     </>
                 )}
-                 {order.status && <Badge variant={order.status === 'pending' ? 'outline' : 'secondary'} className="capitalize">{order.status}</Badge>}
+                 {order.status && <Badge variant={getStatusBadgeVariant()} className={cn("capitalize", getStatusBadgeClass())}>{order.status}</Badge>}
             </div>
         )}
       </CardHeader>

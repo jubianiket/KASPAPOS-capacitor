@@ -77,7 +77,7 @@ export default function Home() {
 
 
   const occupiedTables = activeOrders
-    .filter(o => o.order_type === 'dine-in' && o.table_number && o.id! > 0)
+    .filter(o => o.order_type === 'dine-in' && o.table_number && o.status !== 'completed')
     .map(o => o.table_number!);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function Home() {
     
     if (currentOrderType === 'dine-in') {
       if (tableNumber) {
-        const existingOrder = activeOrders.find(o => o.table_number === tableNumber);
+        const existingOrder = activeOrders.find(o => o.table_number === tableNumber && o.status !== 'completed');
         setActiveOrder(existingOrder || null);
       } else {
         setActiveOrder(null);
@@ -193,17 +193,6 @@ export default function Home() {
       }
     }
   }
-  
-  const markAsCompleted = async () => {
-      if (activeOrder && activeOrder.status === 'received') {
-          const completedOrderData = {
-              ...activeOrder,
-              status: 'completed' as const,
-          }
-          await updateAndSaveOrder(completedOrderData);
-      }
-  }
-
 
   const addToOrder = async (item: MenuItem, portion: string) => {
     console.log('Adding to order:', { item, portion });
@@ -300,9 +289,30 @@ export default function Home() {
       quantity: 1,
     };
     
-    // We pass a fake 'portion' here; it is part of the customItem itself.
-    // The addToOrder function is flexible enough to handle this.
-    addToOrder(customItem, 'Custom');
+    let orderToUpdate: Order;
+
+    if (activeOrder) {
+      orderToUpdate = {...activeOrder, items: [...activeOrder.items, customItem] };
+    } else {
+      orderToUpdate = {
+          id: tempId(),
+          items: [customItem],
+          subtotal: 0, tax: 0, total: 0,
+          payment_status: 'unpaid',
+          order_type: currentOrderType,
+          table_number: currentOrderType === 'dine-in' ? tableNumber : null,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          restaurant_id: user.restaurant_id
+      };
+    }
+    
+    updateAndSaveOrder(orderToUpdate);
+
+    toast({
+        title: "Custom Item Added",
+        description: `${itemName} was added to the order.`
+    });
   };
 
 
@@ -360,6 +370,7 @@ export default function Home() {
     const updatedOrder = await saveOrder({
       ...completedOrder,
       payment_status: 'paid',
+      status: 'completed'
     });
 
     if (updatedOrder) {
@@ -481,7 +492,7 @@ export default function Home() {
                     selectedTable={tableNumber} 
                     onSelectTable={(t) => {
                       setTableNumber(t);
-                      const existingOrder = activeOrders.find(o => o.table_number === t);
+                      const existingOrder = activeOrders.find(o => o.table_number === t && o.status !== 'completed');
                       setActiveOrder(existingOrder || null);
                     }}
                     occupiedTables={occupiedTables}
@@ -563,5 +574,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

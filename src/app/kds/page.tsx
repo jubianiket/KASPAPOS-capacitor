@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { KitchenOrder, User } from '@/types';
-import { getKitchenOrders, updateKitchenOrderStatus, supabase } from '@/lib/supabase';
+import { getKitchenOrders, updateKitchenOrderStatus, supabase, getSettings } from '@/lib/supabase';
 import KdsOrderCard from '@/components/kds-order-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ export default function KDSPage() {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [isKdsEnabled, setIsKdsEnabled] = useState(false);
   const router = useRouter();
 
   const fetchOrders = useCallback(async (restaurantId: number) => {
@@ -22,19 +23,19 @@ export default function KDSPage() {
     setOrders(kitchenOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
   }, []);
 
-  const handleUpdateStatus = async (orderId: number, status: 'preparing' | 'ready') => {
-    if (!user?.restaurant_id) return;
-    const success = await updateKitchenOrderStatus(orderId, user.restaurant_id, status);
+  const handleUpdateStatus = async (order: KitchenOrder, status: 'preparing' | 'ready') => {
+    if (!user?.restaurant_id || !isKdsEnabled) return;
+    const success = await updateKitchenOrderStatus(order.id, order.order_id, user.restaurant_id, status);
     if (success) {
       // Optimistically update UI or refetch
       setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId ? { ...order, status } : order
+        prevOrders.map(o =>
+          o.id === order.id ? { ...o, status } : o
         )
       );
       if (status === 'ready') {
           setTimeout(() => {
-              setOrders(prev => prev.filter(o => o.id !== orderId));
+              setOrders(prev => prev.filter(o => o.id !== order.id));
           }, 2000); // Remove from view after 2 seconds
       }
     }
@@ -47,7 +48,15 @@ export default function KDSPage() {
       setUser(parsedUser);
       if (parsedUser.restaurant_id) {
         setIsLoading(true);
-        fetchOrders(parsedUser.restaurant_id).finally(() => setIsLoading(false));
+        getSettings(parsedUser.restaurant_id).then(settings => {
+          const kdsEnabled = !!settings?.kds_enabled;
+          setIsKdsEnabled(kdsEnabled);
+          if (kdsEnabled) {
+            fetchOrders(parsedUser.restaurant_id!).finally(() => setIsLoading(false));
+          } else {
+            setIsLoading(false);
+          }
+        });
       }
     } else {
       router.replace('/login');
@@ -56,7 +65,7 @@ export default function KDSPage() {
 
 
   useEffect(() => {
-    if (!user?.restaurant_id) return;
+    if (!user?.restaurant_id || !isKdsEnabled) return;
 
     const channel = supabase
       .channel('kitchen-orders-channel')
@@ -74,7 +83,7 @@ export default function KDSPage() {
       supabase.removeChannel(channel);
     };
 
-  }, [user, fetchOrders]);
+  }, [user, fetchOrders, isKdsEnabled]);
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
@@ -94,6 +103,11 @@ export default function KDSPage() {
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-96 w-full" />
             ))}
+          </div>
+        ) : !isKdsEnabled ? (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card rounded-lg border">
+            <h2 className="text-2xl font-semibold text-muted-foreground">KDS is Disabled</h2>
+            <p className="mt-2 text-muted-foreground">Please enable the Kitchen Display System in the settings page.</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-card rounded-lg border">

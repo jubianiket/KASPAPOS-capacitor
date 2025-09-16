@@ -34,18 +34,27 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {orders.map((order) => {
           const isSelected = activeOrderId === order.id;
+          const isReady = order.status === 'ready';
 
           return (
             <Card
               key={order.id}
               onClick={() => onSelectOrder(order.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 flex flex-col",
+                "cursor-pointer transition-all duration-200 flex flex-col relative",
                 isSelected
                   ? "bg-primary text-primary-foreground shadow-lg ring-2 ring-primary ring-offset-2"
+                  : isReady
+                  ? "bg-amber-500/20 border-amber-500 text-amber-700"
                   : "hover:bg-muted/50"
               )}
             >
+              {isReady && (
+                 <span className="absolute -top-2 -right-2 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
+                </span>
+              )}
               <CardContent className="p-3 flex flex-col justify-between h-full">
                 <div>
                     <div className="flex items-center justify-between mb-2">
@@ -82,7 +91,7 @@ export default function ActiveOrders({ orders, onSelectOrder, activeOrderId }: A
                            Rs.{order.total.toFixed(2)}
                         </div>
                     </div>
-                     {order.status && <Badge variant="secondary" className="capitalize mt-2">{order.status}</Badge>}
+                     {order.status && <Badge variant={isReady ? 'destructive' : 'secondary'} className="capitalize mt-2">{order.status}</Badge>}
                  </div>
               </CardContent>
             </Card>

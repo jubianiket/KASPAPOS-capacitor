@@ -11,7 +11,7 @@ import { ScrollArea } from './ui/scroll-area';
 
 interface KdsOrderCardProps {
   order: KitchenOrder;
-  onUpdateStatus: (orderId: number, status: 'preparing' | 'ready') => void;
+  onUpdateStatus: (order: KitchenOrder, status: 'preparing' | 'ready') => void;
 }
 
 const useTimeElapsed = (startTime: string) => {
@@ -74,7 +74,7 @@ export default function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProp
             <CardFooter className="p-4 border-t">
                 <Button 
                     className="w-full text-base py-5" 
-                    onClick={() => onUpdateStatus(order.id, 'ready')}
+                    onClick={() => onUpdateStatus(order, 'ready')}
                     disabled={isReady}
                     variant={isReady ? 'secondary' : 'default'}
                 >

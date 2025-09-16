@@ -35,7 +35,7 @@ export interface Order {
   payment_status?: 'paid' | 'unpaid';
   order_type: 'dine-in' | 'delivery' | 'takeaway';
   table_number?: number | null;
-  status: 'pending' | 'received' | 'completed';
+  status: 'pending' | 'received' | 'ready' | 'completed';
   phone_no?: string;
   flat_no?: string;
   building_no?: string;
