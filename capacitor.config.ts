@@ -1,3 +1,4 @@
+
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -7,6 +8,9 @@ const config: CapacitorConfig = {
   plugins: {
     Share: {
       // Share plugin configuration
+    },
+    CapacitorMusicControls: {
+        // Music controls configuration (optional)
     }
   },
   android: {
