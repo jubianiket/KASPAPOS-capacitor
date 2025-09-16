@@ -18,72 +18,99 @@ export default function KDSPage() {
   const [isKdsEnabled, setIsKdsEnabled] = useState(false);
   const router = useRouter();
 
-  const fetchOrders = useCallback(async (restaurantId: number) => {
-    const kitchenOrders = await getKitchenOrders(restaurantId);
-    setOrders(kitchenOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-  }, []);
-
   const handleUpdateStatus = async (order: KitchenOrder, status: 'preparing' | 'ready') => {
     if (!user?.restaurant_id || !isKdsEnabled) return;
+    
+    // First, update the status in the database
     const success = await updateKitchenOrderStatus(order.id, order.order_id, user.restaurant_id, status);
+    
     if (success) {
-      // Optimistically update UI or refetch
-      setOrders(prevOrders =>
-        prevOrders.map(o =>
-          o.id === order.id ? { ...o, status } : o
-        )
-      );
+      // If the update is successful, update the local state immediately
       if (status === 'ready') {
-          setTimeout(() => {
-              setOrders(prev => prev.filter(o => o.id !== order.id));
-          }, 2000); // Remove from view after 2 seconds
+        // Optimistically update the UI to show it's ready...
+        setOrders(prevOrders =>
+          prevOrders.map(o => (o.id === order.id ? { ...o, status } : o))
+        );
+        // ...then remove it after a delay
+        setTimeout(() => {
+          setOrders(prev => prev.filter(o => o.id !== order.id));
+        }, 2000);
+      } else {
+        // For other statuses, just update the item
+        setOrders(prevOrders =>
+          prevOrders.map(o => (o.id === order.id ? { ...o, status } : o))
+        );
       }
     }
   };
-  
+
   useEffect(() => {
     const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const parsedUser: User = JSON.parse(userStr);
-      setUser(parsedUser);
-      if (parsedUser.restaurant_id) {
-        setIsLoading(true);
-        getSettings(parsedUser.restaurant_id).then(settings => {
-          const kdsEnabled = !!settings?.kds_enabled;
-          setIsKdsEnabled(kdsEnabled);
-          if (kdsEnabled) {
-            fetchOrders(parsedUser.restaurant_id!).finally(() => setIsLoading(false));
-          } else {
-            setIsLoading(false);
-          }
-        });
-      }
-    } else {
+    if (!userStr) {
       router.replace('/login');
+      return;
     }
-  }, [router, fetchOrders]);
+    
+    const parsedUser: User = JSON.parse(userStr);
+    setUser(parsedUser);
 
+    if (!parsedUser.restaurant_id) {
+      setIsLoading(false);
+      return;
+    }
+    
+    const restaurantId = parsedUser.restaurant_id;
 
-  useEffect(() => {
-    if (!user?.restaurant_id || !isKdsEnabled) return;
-
-    const channel = supabase
-      .channel('kitchen-orders-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'kitchen_orders', filter: `restaurant_id=eq.${user.restaurant_id}` },
-        (payload) => {
-           console.log('[KDS] Real-time change received for my restaurant:', payload);
-           fetchOrders(user.restaurant_id!);
-        }
-      )
-      .subscribe();
+    const fetchInitialDataAndSubscribe = async () => {
+      setIsLoading(true);
       
-    return () => {
-      supabase.removeChannel(channel);
+      const settings = await getSettings(restaurantId);
+      const kdsEnabled = !!settings?.kds_enabled;
+      setIsKdsEnabled(kdsEnabled);
+
+      if (kdsEnabled) {
+        const initialOrders = await getKitchenOrders(restaurantId);
+        setOrders(initialOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+      }
+      
+      setIsLoading(false);
     };
 
-  }, [user, fetchOrders, isKdsEnabled]);
+    fetchInitialDataAndSubscribe();
+
+    const channel = supabase
+      .channel('kitchen-orders-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'kitchen_orders',
+          filter: `restaurant_id=eq.${restaurantId}` 
+        },
+        async (payload) => {
+          console.log('[KDS] Real-time change received:', payload);
+          // Refetch all active kitchen orders to ensure UI is in sync
+          const updatedOrders = await getKitchenOrders(restaurantId);
+          setOrders(updatedOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+        }
+      )
+      .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+              console.log('[KDS] Real-time channel subscribed.');
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error('[KDS] Real-time channel error:', err);
+          }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      console.log('[KDS] Real-time channel unsubscribed.');
+    };
+    
+  }, [router]);
+
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
