@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { KitchenOrder, User } from '@/types';
 import { getKitchenOrders, updateKitchenOrderStatus, supabase, getSettings } from '@/lib/supabase';
 import KdsOrderCard from '@/components/kds-order-card';
@@ -17,6 +17,7 @@ export default function KDSPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isKdsEnabled, setIsKdsEnabled] = useState(false);
   const router = useRouter();
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleUpdateStatus = async (order: KitchenOrder, status: 'preparing' | 'ready') => {
     if (!user?.restaurant_id || !isKdsEnabled) return;
@@ -92,7 +93,12 @@ export default function KDSPage() {
           console.log('[KDS] Real-time change received:', payload);
           // Refetch all active kitchen orders to ensure UI is in sync
           const updatedOrders = await getKitchenOrders(restaurantId);
-          setOrders(updatedOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+           setOrders(prevOrders => {
+            if (updatedOrders.length > prevOrders.length) {
+              audioRef.current?.play().catch(e => console.error("Error playing sound:", e));
+            }
+            return updatedOrders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          });
         }
       )
       .subscribe((status, err) => {
@@ -114,6 +120,7 @@ export default function KDSPage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
+      <audio ref={audioRef} src="https://www.soundjay.com/buttons/beep-07a.mp3" preload="auto" />
       <div className="max-w-7xl mx-auto">
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-foreground">Kitchen Display</h1>
