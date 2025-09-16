@@ -245,6 +245,35 @@ export const createKitchenOrder = async (order: Order): Promise<KitchenOrder | n
     return data as KitchenOrder;
 }
 
+export const getKitchenOrders = async (restaurantId: number): Promise<KitchenOrder[]> => {
+    const { data, error } = await supabase
+        .from('kitchen_orders')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .neq('status', 'ready')
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error("Error fetching kitchen orders:", error);
+        return [];
+    }
+    return data as KitchenOrder[];
+}
+
+export const updateKitchenOrderStatus = async (orderId: number, restaurantId: number, status: 'preparing' | 'ready'): Promise<boolean> => {
+    const { error } = await supabase
+        .from('kitchen_orders')
+        .update({ status: status })
+        .match({ id: orderId, restaurant_id: restaurantId });
+
+    if (error) {
+        console.error("Error updating kitchen order status:", error);
+        return false;
+    }
+    return true;
+};
+
+
 // --- User Authentication & Restaurant Management (Using public.users table only) ---
 
 export const signUp = async (email: string, password: string, userData: Omit<User, 'id' | 'role' | 'restaurant_id' | 'email' | 'password'>): Promise<User | null> => {

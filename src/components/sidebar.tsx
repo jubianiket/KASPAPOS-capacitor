@@ -11,7 +11,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Ticket, UtensilsCrossed, LayoutDashboard, LogOut, Settings, X, UserCircle, BookMarked } from 'lucide-react';
+import { Ticket, UtensilsCrossed, LayoutDashboard, LogOut, Settings, X, UserCircle, BookMarked, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import type { User } from '@/types';
@@ -25,7 +25,7 @@ interface SidebarProps {
 const KaspaLogo = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
+      viewBox="0 0 24"
       fill="currentColor"
       className="h-6 w-6"
     >
@@ -63,6 +63,7 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
   const navLinks = [
     { href: '/', label: 'POS', icon: UtensilsCrossed },
     { href: '/menu', label: 'Menu', icon: BookMarked },
+    { href: '/kds', label: 'KDS', icon: Monitor },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'Order History', icon: Ticket },
     { href: '/settings', label: 'Settings', icon: Settings },
@@ -102,7 +103,7 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
               asChild
               onClick={closeSidebar}
             >
-              <Link href={href}>
+              <Link href={href} target={label === 'KDS' ? '_blank' : '_self'}>
                 <Icon className="h-5 w-5" />
                 <span>{label}</span>
               </Link>
@@ -119,5 +120,3 @@ export default function Sidebar({ isOpen, onOpenChange }: SidebarProps) {
     </Sheet>
   );
 }
-
-    
