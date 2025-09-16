@@ -287,7 +287,8 @@ export default function Home() {
         });
         return;
     }
-    const customItem: MenuItem = {
+    // This is now an OrderItem, not a full MenuItem
+    const customItem: OrderItem = {
       id: tempId(), // Use a temporary negative ID for custom items
       name: itemName,
       rate: itemRate,
@@ -295,8 +296,12 @@ export default function Home() {
       portion: 'Custom',
       is_active: true,
       restaurant_id: user.restaurant_id,
-      dietary_type: 'Veg', // Default custom items to veg, can be changed later if needed
+      dietary_type: 'Veg', // Default custom items to veg
+      quantity: 1,
     };
+    
+    // We pass a fake 'portion' here; it is part of the customItem itself.
+    // The addToOrder function is flexible enough to handle this.
     addToOrder(customItem, 'Custom');
   };
 
@@ -558,3 +563,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
