@@ -64,7 +64,7 @@ export default function KDSPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'kitchen_orders', filter: `restaurant_id=eq.${user.restaurant_id}` },
         (payload) => {
-           console.log('[KDS] Real-time change received:', payload);
+           console.log('[KDS] Real-time change received for my restaurant:', payload);
            fetchOrders(user.restaurant_id!);
         }
       )
