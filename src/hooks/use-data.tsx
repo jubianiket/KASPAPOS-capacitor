@@ -113,9 +113,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
         ).subscribe();
 
+    const settingsChannel = supabase.channel('settings-channel')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'restaurants', filter: `id=eq.${user.restaurant_id}` },
+            (payload) => {
+                console.log('[Supabase] Settings change received:', payload);
+                fetchAllData();
+            }
+        ).subscribe();
+
+
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(menuItemsChannel);
+      supabase.removeChannel(settingsChannel);
     };
     
   }, [fetchAllData, user?.restaurant_id]);
