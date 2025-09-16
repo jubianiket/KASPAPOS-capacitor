@@ -147,19 +147,6 @@ export default function SettingsPage() {
               onChange={(e) => handleFieldChange('phone', e.target.value)} 
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="table_count">Number of Tables</Label>
-            <Input 
-              id="table_count" 
-              name="table_count"
-              type="number" 
-              value={settings.table_count || ''} 
-              onChange={(e) => handleFieldChange('table_count', parseInt(e.target.value, 10))} 
-            />
-            <p className="text-xs text-muted-foreground">
-              Set the total number of tables available in your restaurant.
-            </p>
-          </div>
           
           <Separator />
 
@@ -252,8 +239,32 @@ export default function SettingsPage() {
                       )}
                   </div>
               )}
-          </div>
 
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Operational Settings</h3>
+             <div className="space-y-2">
+                <Label htmlFor="table_count">Number of Tables</Label>
+                <Input 
+                id="table_count" 
+                name="table_count"
+                type="number" 
+                value={settings.table_count || ''} 
+                onChange={(e) => handleFieldChange('table_count', parseInt(e.target.value, 10))} 
+                />
+                <p className="text-xs text-muted-foreground">
+                Set the total number of tables available in your restaurant.
+                </p>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Switch 
+                    id="kds_enabled" 
+                    checked={!!settings.kds_enabled} 
+                    onCheckedChange={(checked) => handleFieldChange('kds_enabled', checked)} 
+                />
+                <Label htmlFor="kds_enabled">Enable Kitchen Display System (KDS)</Label>
+            </div>
+          </div>
           <Separator />
           
            <div className="space-y-4">
@@ -349,5 +360,3 @@ const SettingsSkeleton = () => (
         </Card>
     </div>
 );
-
-    
