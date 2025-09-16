@@ -120,7 +120,7 @@ export default function KDSPage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
-      <audio ref={audioRef} src="https://www.soundjay.com/buttons/beep-07a.mp3" preload="auto" />
+      <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" />
       <div className="max-w-7xl mx-auto">
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-foreground">Kitchen Display</h1>
