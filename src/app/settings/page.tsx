@@ -239,7 +239,7 @@ export default function SettingsPage() {
                       )}
                   </div>
               )}
-
+          </div>
           <Separator />
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Operational Settings</h3>
@@ -328,7 +328,6 @@ export default function SettingsPage() {
                 </div>
               </div>
            </div>
-
         </CardContent>
         <CardFooter>
           <Button onClick={handleSave} disabled={isSaving || isLoading}>
